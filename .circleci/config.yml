@@ -8,12 +8,12 @@ jobs:
         steps:
             - attach_workspace:
                 at: /ws
-            - setup_remote_docker
             - run:
                 name: Echo arguments
                 command: |
                     echo DOCKER_BRANCH=$DOCKER_BRANCH
                     echo DOCKER_REPO=$DOCKER_REPO
+            - setup_remote_docker
             - run:
                 name: Checkout opencog-docker repo
                 command: git clone --depth=1 -b $DOCKER_BRANCH $DOCKER_REPO .
@@ -45,6 +45,11 @@ jobs:
             - image: singularitynet/opencog-deps
         working_directory: /ws/cogutil
         steps:
+            - run:
+                name: Echo arguments
+                command: |
+                    echo COGUTIL_BRANCH=$COGUTIL_BRANCH
+                    echo COGUTIL_REPO=$COGUTIL_REPO
             - run:
                 name: Clone cogutil
                 command: git clone --depth 1 -b $COGUTIL_BRANCH $COGUTIL_REPO .
