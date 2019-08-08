@@ -23,8 +23,8 @@ jobs:
                 command: |
                     cd ./opencog
                     #sh ./docker-build.sh -u -b
-                    sh ./docker-build.sh -b
-                    docker save -o /ws/opencog-deps.tgz singularitynet/opencog-deps
+                    docker build -t singularitynet/opencog-deps:int base
+                    docker save -o /ws/opencog-deps.tgz singularitynet/opencog-deps:int
             - persist_to_workspace:
                 root: /ws
                 paths:
@@ -42,7 +42,7 @@ jobs:
 
     build-cogutil:
         docker:
-            - image: singularitynet/opencog-deps
+            - image: singularitynet/opencog-deps:int
         working_directory: /ws/cogutil
         steps:
             - run:
