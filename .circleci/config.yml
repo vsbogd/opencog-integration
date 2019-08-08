@@ -1,0 +1,62 @@
+version: 2.0
+
+jobs:
+    build-docker:
+        docker:
+            - image: docker:19-git
+        working_directory: /ws/opencog-docker
+        steps:
+            - attach_workspace:
+                at: /ws
+            - setup_remote_docker
+            - run:
+                name: Echo arguments
+                command: |
+                    echo DOCKER_BRANCH=$DOCKER_BRANCH
+                    echo DOCKER_REPO=$DOCKER_REPO
+            - run:
+                name: Checkout opencog-docker repo
+                command: git clone --depth=1 -b $DOCKER_BRANCH $DOCKER_REPO .
+            # TODO: add path to the ocpkg as parameter
+            - run:
+                name: Build opencog-deps image
+                command: |
+                    cd ./opencog
+                    #sh ./docker-build.sh -u -b
+                    sh ./docker-build.sh -b
+                    docker save -o /ws/opencog-deps.tgz singularitynet/opencog-deps
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - opencog-deps.tgz
+
+    inject-docker:
+        docker:
+            - image: docker:19-git
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Load docker image
+                command: docker load -i /ws/opencog-deps.tgz
+
+    build-cogutil:
+        docker:
+            - image: singularitynet/opencog-deps
+        working_directory: /ws/cogutil
+        steps:
+            - run:
+                name: Clone cogutil
+                command: git clone --depth 1 -b $COGUTIL_BRANCH $COGUTIL_REPO .
+
+workflows:
+    version: 2
+    complete_build:
+        jobs:
+            - build-docker
+            - inject-docker:
+                requires:
+                    - build-docker
+            - build-cogutil:
+                requires:
+                    - inject-docker
