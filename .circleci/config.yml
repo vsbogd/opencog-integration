@@ -1,4 +1,15 @@
-version: 2.0
+version: 2.1
+
+executors:
+    opencog-deps:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        environment:
+            MAKEFLAGS: -j2
 
 jobs:
 
@@ -172,6 +183,77 @@ jobs:
                 paths:
                     - opencog
 
+    build-moses:
+        executor: opencog-deps
+        working_directory: /ws/moses
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo MOSES_BRANCH=$MOSES_BRANCH
+                    echo MOSES_REPO=$MOSES_REPO
+            - run:
+                name: Build moses
+                command: |
+                    make -C /ws/cogutil/build install
+                    git clone --depth 1 -b $MOSES_BRANCH $MOSES_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+
+    build-asmoses:
+        executor: opencog-deps
+        working_directory: /ws/asmoses
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo ASMOSES_BRANCH=$ASMOSES_BRANCH
+                    echo ASMOSES_REPO=$ASMOSES_REPO
+            - run:
+                name: Build as-moses
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $ASMOSES_BRANCH $ASMOSES_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+
+    build-ure:
+        executor: opencog-deps
+        working_directory: /ws/ure
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo URE_BRANCH=$URE_BRANCH
+                    echo URE_REPO=$URE_REPO
+            - run:
+                name: Build as-moses
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $URE_BRANCH $URE_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+
 workflows:
     version: 2
     complete_build:
@@ -187,6 +269,18 @@ workflows:
                 requires:
                     - build-cogutil
             - build-opencog:
+                context: dockerhub
+                requires:
+                    - build-atomspace
+            - build-moses:
+                context: dockerhub
+                requires:
+                    - build-cogutil
+            - build-asmoses:
+                context: dockerhub
+                requires:
+                    - build-atomspace
+            - build-ure:
                 context: dockerhub
                 requires:
                     - build-atomspace
