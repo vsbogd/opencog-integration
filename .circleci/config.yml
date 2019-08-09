@@ -259,19 +259,20 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-cogutil
+            - build-ure:
+                context: dockerhub
+                requires:
+                    - build-atomspace
             - build-opencog:
                 context: dockerhub
                 requires:
                     - build-atomspace
+                    - build-ure
             - build-moses:
                 context: dockerhub
                 requires:
                     - build-cogutil
             - build-asmoses:
-                context: dockerhub
-                requires:
-                    - build-atomspace
-            - build-ure:
                 context: dockerhub
                 requires:
                     - build-atomspace
