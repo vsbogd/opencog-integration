@@ -50,8 +50,21 @@ jobs:
                     echo COGUTIL_BRANCH=$COGUTIL_BRANCH
                     echo COGUTIL_REPO=$COGUTIL_REPO
             - run:
-                name: Clone cogutil
+                name: Clone repo
                 command: git clone --depth 1 -b $COGUTIL_BRANCH $COGUTIL_REPO .
+            - run:
+                name: Build
+                command: |
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+            - run:
+                name: Test
+                command: |
+                    cd build
+                    make tests
+                    make test
 
 workflows:
     version: 2
