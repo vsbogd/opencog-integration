@@ -1,37 +1,33 @@
 version: 2.0
 
 jobs:
+
     build-docker:
         docker:
             - image: docker:19-git
         working_directory: /ws/opencog-docker
         steps:
-            - attach_workspace:
-                at: /ws
+            - setup_remote_docker
             - run:
                 name: Echo arguments
                 command: |
                     echo DOCKER_BRANCH=$DOCKER_BRANCH
                     echo DOCKER_REPO=$DOCKER_REPO
                     echo DOCKER_USERNAME=$DOCKER_USERNAME
-            - setup_remote_docker
             - run:
-                name: Checkout opencog-docker repo
-                command: git clone --depth=1 -b $DOCKER_BRANCH $DOCKER_REPO .
-            # TODO: add path to the ocpkg as parameter
+                name: Clone docker repo
+                command: |
+                    git clone --depth=1 -b $DOCKER_BRANCH $DOCKER_REPO .
             - run:
                 name: Build opencog-deps image
                 command: |
                     cd ./opencog
                     # TODO: add parameters:
                     # - ocpkg path
-                    # - image name:tag
+                    # - testdatasets path ?
                     #sh ./docker-build.sh -u -b
                     sh ./docker-build.sh -b
                     docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:deps
-            - run:
-                name: Push to Dockerhub
-                command: |
                     echo "$DOCKER_PASSWORD" | docker login --username=$DOCKER_USERNAME --password-stdin
                     docker push vsbogdcircleci/singularitynet:deps
 
@@ -50,19 +46,13 @@ jobs:
                     echo COGUTIL_BRANCH=$COGUTIL_BRANCH
                     echo COGUTIL_REPO=$COGUTIL_REPO
             - run:
-                name: Clone repo
-                command: git clone --depth 1 -b $COGUTIL_BRANCH $COGUTIL_REPO .
-            - run:
                 name: Build
                 command: |
+                    git clone --depth 1 -b $COGUTIL_BRANCH $COGUTIL_REPO .
                     mkdir -p build
                     cd build
                     cmake ..
                     make
-            - run:
-                name: Test
-                command: |
-                    cd build
                     make tests
                     make test
 
