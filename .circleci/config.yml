@@ -95,6 +95,10 @@ jobs:
               auth:
                   username: $DOCKER_USERNAME
                   password: $DOCKER_PASSWORD
+              environment:
+                  PGHOST: opencog-postgres
+                  PGUSER: opencog_test
+                  PGPASSWORD: cheese
             - image: vsbogdcircleci/singularitynet:postgres
               auth:
                   username: $DOCKER_USERNAME
