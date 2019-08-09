@@ -114,7 +114,7 @@ jobs:
             - run:
                 name: Build atomspace
                 command: |
-                    make -C /ws/cogutil install
+                    make -C /ws/cogutil/build install
                     git clone --depth 1 -b $ATOMSPACE_BRANCH $ATOMSPACE_REPO .
                     mkdir -p build
                     cd build
@@ -154,8 +154,8 @@ jobs:
             - run:
                 name: Build opencog
                 command: |
-                    make -C /ws/cogutil install
-                    make -C /ws/atomspace install
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
                     git clone --depth 1 -b $OPENCOG_BRANCH $OPENCOG_REPO .
                     mkdir -p build
                     cd build
