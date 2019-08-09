@@ -27,27 +27,55 @@ jobs:
                     # - testdatasets path ?
                     #sh ./docker-build.sh -u -b
                     sh ./docker-build.sh -b
-                    docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:deps
+                    docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
+            - run:
+                name: Build relex image
+                command: |
+                    cd ./opencog
+                    # TODO: add parameters:
+                    # - relex path
+                    #sh ./docker-build.sh -u -r
+                    sh ./docker-build.sh -r
+                    docker tag singularitynet/relex:latest vsbogdcircleci/singularitynet:relex
+            - run:
+                name: Build postres image
+                command: |
+                    cd ./opencog
+                    # TODO: add parameters:
+                    # - relex path
+                    #sh ./docker-build.sh -u -p
+                    sh ./docker-build.sh -p
+                    docker tag singularitynet/postgres:latest vsbogdcircleci/singularitynet:postgres
+            - run:
+                name: Push images
+                command: |
                     echo "$DOCKER_PASSWORD" | docker login --username=$DOCKER_USERNAME --password-stdin
-                    docker push vsbogdcircleci/singularitynet:deps
+                    docker push vsbogdcircleci/singularitynet:opencog-deps
+                    docker push vsbogdcircleci/singularitynet:relex
+                    docker push vsbogdcircleci/singularitynet:postgres
 
     build-cogutil:
         docker:
-            - image: vsbogdcircleci/singularitynet:deps
+            - image: vsbogdcircleci/singularitynet:opencog-deps
               user: root
               auth:
                   username: $DOCKER_USERNAME
                   password: $DOCKER_PASSWORD
+        environment:
+            MAKEFLAGS: -j2
         working_directory: /ws/cogutil
         steps:
+            - attach_workspace:
+                at: /ws
             - run:
                 name: Echo arguments
                 command: |
                     echo COGUTIL_BRANCH=$COGUTIL_BRANCH
                     echo COGUTIL_REPO=$COGUTIL_REPO
             - run:
-                name: Build
+                name: Build cogutil
                 command: |
+                    echo $MAKEFLAGS
                     git clone --depth 1 -b $COGUTIL_BRANCH $COGUTIL_REPO .
                     mkdir -p build
                     cd build
@@ -55,6 +83,90 @@ jobs:
                     make
                     make tests
                     make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - cogutil
+
+    build-atomspace:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+            - image: vsbogdcircleci/singularitynet:postgres
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              name: opencog-postgres
+        environment:
+            MAKEFLAGS: -j2
+        working_directory: /ws/atomspace
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo ATOMSPACE_BRANCH=$ATOMSPACE_BRANCH
+                    echo ATOMSPACE_REPO=$ATOMSPACE_REPO
+            - run:
+                name: Build atomspace
+                command: |
+                    make -C /ws/cogutil install
+                    git clone --depth 1 -b $ATOMSPACE_BRANCH $ATOMSPACE_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - atomspace
+
+    build-opencog:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+            - image: vsbogdcircleci/singularitynet:relex
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              name: relex
+              command: /bin/sh -c "./opencog-server.sh"
+        environment:
+            MAKEFLAGS: -j2
+        working_directory: /ws/opencog
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo OPENCOG_BRANCH=$OPENCOG_BRANCH
+                    echo OPENCOG_REPO=$OPENCOG_REPO
+            - run:
+                name: Build opencog
+                command: |
+                    make -C /ws/cogutil install
+                    make -C /ws/atomspace install
+                    git clone --depth 1 -b $OPENCOG_BRANCH $OPENCOG_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - opencog
 
 workflows:
     version: 2
@@ -66,3 +178,11 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-docker
+            - build-atomspace:
+                context: dockerhub
+                requires:
+                    - build-cogutil
+            - build-opencog:
+                context: dockerhub
+                requires:
+                    - build-atomspace
