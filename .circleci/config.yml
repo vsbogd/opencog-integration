@@ -42,7 +42,7 @@ jobs:
                 command: |
                     cd ./opencog
                     # TODO: add parameters:
-                    # - relex path
+                    # - atomspace path
                     #sh ./docker-build.sh -u -p
                     sh ./docker-build.sh -p
                     docker tag singularitynet/postgres:latest vsbogdcircleci/singularitynet:postgres
