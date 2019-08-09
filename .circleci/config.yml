@@ -13,6 +13,7 @@ jobs:
                 command: |
                     echo DOCKER_BRANCH=$DOCKER_BRANCH
                     echo DOCKER_REPO=$DOCKER_REPO
+                    echo DOCKER_USERNAME=$DOCKER_USERNAME
             - setup_remote_docker
             - run:
                 name: Checkout opencog-docker repo
@@ -22,27 +23,25 @@ jobs:
                 name: Build opencog-deps image
                 command: |
                     cd ./opencog
+                    # TODO: add parameters:
+                    # - ocpkg path
+                    # - image name:tag
                     #sh ./docker-build.sh -u -b
-                    docker build -t singularitynet/opencog-deps:int base
-                    docker save -o /ws/opencog-deps.tgz singularitynet/opencog-deps:int
-            - persist_to_workspace:
-                root: /ws
-                paths:
-                    - opencog-deps.tgz
-
-    inject-docker:
-        docker:
-            - image: docker:19-git
-        steps:
-            - attach_workspace:
-                at: /ws
+                    sh ./docker-build.sh -b
+                    docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:deps
             - run:
-                name: Load docker image
-                command: docker load -i /ws/opencog-deps.tgz
+                name: Push to Dockerhub
+                command: |
+                    echo "$DOCKER_PASSWORD" | docker login --username=$DOCKER_USERNAME --password-stdin
+                    docker push vsbogdcircleci/singularitynet:deps
 
     build-cogutil:
         docker:
-            - image: singularitynet/opencog-deps:int
+            - image: vsbogdcircleci/singularitynet:deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
         working_directory: /ws/cogutil
         steps:
             - run:
@@ -58,10 +57,9 @@ workflows:
     version: 2
     complete_build:
         jobs:
-            - build-docker
-            - inject-docker:
+            - build-docker:
+                context: dockerhub
+            - build-cogutil:
+                context: dockerhub
                 requires:
                     - build-docker
-            - build-cogutil:
-                requires:
-                    - inject-docker
