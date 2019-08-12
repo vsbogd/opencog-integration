@@ -33,7 +33,7 @@ jobs:
                     cd ./opencog
                     OCPKG_URL=`echo ${OCPKG_REPO} | \
                         sed 's/github/raw.githubusercontent/' | \
-	                    sed 's~\.git$~/'${OCPKG_BRANCH}'/ocpkg~'`
+                        sed 's~\.git$~/'${OCPKG_BRANCH}'/ocpkg~'`
                     sh ./docker-build.sh -u -b
                     docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
             - run:
@@ -48,7 +48,7 @@ jobs:
                     cd ./opencog
                     ATOM_SQL_URL=`echo ${ATOMSPACE_REPO} | \
                         sed 's/github/raw.githubusercontent/' | \
-	                    sed 's~\.git$~/'${ATOMSPACE_BRANCH}'/opencog/persist/sql/multi-driver/atom.sql~'`
+                        sed 's~\.git$~/'${ATOMSPACE_BRANCH}'/opencog/persist/sql/multi-driver/atom.sql~'`
                     sh ./docker-build.sh -u -p
                     docker tag singularitynet/postgres:latest vsbogdcircleci/singularitynet:postgres
             - run:
