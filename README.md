@@ -35,4 +35,12 @@ Generate new token.
 
 ## CircleCI token
 
-TODO
+Is required to configure and start `CircleCI` integration build.
+
+To generate new token:
+- open CircleCI project settings
+- choose `API Permissions` under `Permissions` in the menu
+- press `Create Token` button
+- select `All` in scope field
+- press `Add Token`
+Get token from the `Token` column.
