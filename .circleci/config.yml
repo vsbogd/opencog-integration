@@ -205,7 +205,7 @@ jobs:
                     echo ASMOSES_BRANCH=$ASMOSES_BRANCH
                     echo ASMOSES_REPO=$ASMOSES_REPO
             - run:
-                name: Build as-moses
+                name: Build asmoses
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
@@ -229,7 +229,7 @@ jobs:
                     echo URE_BRANCH=$URE_BRANCH
                     echo URE_REPO=$URE_REPO
             - run:
-                name: Build as-moses
+                name: Build ure
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
