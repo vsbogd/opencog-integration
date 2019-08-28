@@ -43,7 +43,7 @@ jobs:
                     sh ./docker-build.sh -u -r
                     docker tag singularitynet/relex:latest vsbogdcircleci/singularitynet:relex
             - run:
-                name: Build postres image
+                name: Build postgres image
                 command: |
                     cd ./opencog
                     ATOM_SQL_URL=`echo ${ATOMSPACE_REPO} | \
@@ -241,6 +241,31 @@ jobs:
                     make tests
                     make test
 
+    build-miner:
+        executor: opencog-deps
+        working_directory: /ws/ure
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo MINER_BRANCH=$MINER_BRANCH
+                    echo MINER_REPO=$MINER_REPO
+            - run:
+                name: Build miner
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    make -C /ws/ure/build install
+                    git clone --depth 1 -b $MINER_BRANCH $MINER_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+
 workflows:
     version: 2
     complete_build:
@@ -263,7 +288,6 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-atomspace
-                    - build-ure
             - build-moses:
                 context: dockerhub
                 requires:
@@ -272,3 +296,7 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-atomspace
+            - build-miner:
+                context: dockerhub
+                requires:
+                    - build-ure
