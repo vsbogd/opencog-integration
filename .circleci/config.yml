@@ -1,6 +1,7 @@
 version: 2.1
 
 executors:
+    # Standard environment to eliminate copy-paste
     opencog-deps:
         docker:
             - image: vsbogdcircleci/singularitynet:opencog-deps
@@ -60,12 +61,7 @@ jobs:
                     docker push vsbogdcircleci/singularitynet:postgres
 
     build-cogutil:
-        docker:
-            - image: vsbogdcircleci/singularitynet:opencog-deps
-              user: root
-              auth:
-                  username: $DOCKER_USERNAME
-                  password: $DOCKER_PASSWORD
+        executor: opencog-deps
         working_directory: /ws/cogutil
         steps:
             - attach_workspace:
@@ -315,6 +311,8 @@ workflows:
     complete_build:
         jobs:
             - build-docker:
+                # Context here and below contains username and password for
+                # dockerhub repo to write/read singularitynet docker images
                 context: dockerhub
             - build-cogutil:
                 context: dockerhub
