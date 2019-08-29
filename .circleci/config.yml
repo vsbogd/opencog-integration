@@ -270,6 +270,46 @@ jobs:
                     make tests
                     make test
 
+    build-learn:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              environment:
+                  PGHOST: opencog-postgres
+                  PGUSER: opencog_test
+                  PGPASSWORD: cheese
+            - image: vsbogdcircleci/singularitynet:postgres
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              name: opencog-postgres
+        working_directory: /ws/learn
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo LEARN_BRANCH=$LEARN_BRANCH
+                    echo LEARN_REPO=$LEARN_REPO
+            - run:
+                name: Build learn
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    make -C /ws/opencog/build install
+                    git clone --depth 1 -b $LEARN_BRANCH $LEARN_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make db
+                    make tests
+                    make test
+
 workflows:
     version: 2
     complete_build:
@@ -304,3 +344,7 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-ure
+            - build-learn:
+                context: dockerhub
+                requires:
+                    - build-opencog
