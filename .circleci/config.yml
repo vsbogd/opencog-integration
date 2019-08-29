@@ -240,10 +240,14 @@ jobs:
                     make
                     make tests
                     make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - ure
 
     build-miner:
         executor: opencog-deps
-        working_directory: /ws/ure
+        working_directory: /ws/miner
         steps:
             - attach_workspace:
                 at: /ws
