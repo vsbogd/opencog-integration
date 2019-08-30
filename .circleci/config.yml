@@ -9,22 +9,6 @@ executors:
               auth:
                   username: $DOCKER_USERNAME
                   password: $DOCKER_PASSWORD
-    opencog-postgres:
-        docker:
-            - image: vsbogdcircleci/singularitynet:opencog-deps
-              user: root
-              auth:
-                  username: $DOCKER_USERNAME
-                  password: $DOCKER_PASSWORD
-              environment:
-                  PGHOST: opencog-postgres
-                  PGUSER: opencog_test
-                  PGPASSWORD: cheese
-            - image: vsbogdcircleci/singularitynet:postgres
-              auth:
-                  username: $DOCKER_USERNAME
-                  password: $DOCKER_PASSWORD
-              name: opencog-postgres
     opencog-relex:
         docker:
             - image: vsbogdcircleci/singularitynet:opencog-deps
@@ -116,7 +100,21 @@ jobs:
                     - cogutil
 
     build-atomspace:
-        executor: opencog-postgres
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              environment:
+                  PGHOST: opencog-postgres
+                  PGUSER: opencog_test
+                  PGPASSWORD: cheese
+            - image: vsbogdcircleci/singularitynet:postgres
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              name: opencog-postgres
         working_directory: /ws/atomspace
         steps:
             - attach_workspace:
@@ -271,7 +269,21 @@ jobs:
                     make test
 
     build-learn:
-        executor: opencog-postgres
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              environment:
+                  PGHOST: opencog-postgres
+                  PGUSER: opencog_user
+                  PGPASSWORD: cheese
+            - image: vsbogdcircleci/singularitynet:postgres
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              name: opencog-postgres
         working_directory: /ws/learn
         steps:
             - attach_workspace:
