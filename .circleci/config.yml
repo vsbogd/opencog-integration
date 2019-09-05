@@ -68,6 +68,7 @@ jobs:
                     docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
             - run:
                 name: Build relex image
+                no_output_timeout: 60m
                 command: |
                     cd ./opencog
                     sh ./docker-build.sh -u -r
