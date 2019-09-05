@@ -1,27 +1,4 @@
-version: 2.1
-
-executors:
-    # Standard environment to eliminate copy-paste
-    opencog-deps:
-        docker:
-            - image: vsbogdcircleci/singularitynet:opencog-deps
-              user: root
-              auth:
-                  username: $DOCKER_USERNAME
-                  password: $DOCKER_PASSWORD
-    opencog-relex:
-        docker:
-            - image: vsbogdcircleci/singularitynet:opencog-deps
-              user: root
-              auth:
-                  username: $DOCKER_USERNAME
-                  password: $DOCKER_PASSWORD
-            - image: vsbogdcircleci/singularitynet:relex
-              auth:
-                  username: $DOCKER_USERNAME
-                  password: $DOCKER_PASSWORD
-              name: relex
-              command: /bin/sh -c "./opencog-server.sh"
+version: 2.0
 
 jobs:
 
@@ -75,7 +52,12 @@ jobs:
                     docker push vsbogdcircleci/singularitynet:postgres
 
     build-cogutil:
-        executor: opencog-deps
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
         working_directory: /ws/cogutil
         steps:
             - attach_workspace:
@@ -142,7 +124,18 @@ jobs:
                     - atomspace
 
     build-opencog:
-        executor: opencog-relex
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+            - image: vsbogdcircleci/singularitynet:relex
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+              name: relex
+              command: /bin/sh -c "./opencog-server.sh"
         working_directory: /ws/opencog
         steps:
             - attach_workspace:
@@ -170,7 +163,12 @@ jobs:
                     - opencog
 
     build-moses:
-        executor: opencog-deps
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
         working_directory: /ws/moses
         steps:
             - attach_workspace:
@@ -193,7 +191,12 @@ jobs:
                     make test
 
     build-asmoses:
-        executor: opencog-deps
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
         working_directory: /ws/asmoses
         steps:
             - attach_workspace:
@@ -217,7 +220,12 @@ jobs:
                     make test
 
     build-ure:
-        executor: opencog-deps
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
         working_directory: /ws/ure
         steps:
             - attach_workspace:
@@ -245,7 +253,12 @@ jobs:
                     - ure
 
     build-miner:
-        executor: opencog-deps
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
         working_directory: /ws/miner
         steps:
             - attach_workspace:
