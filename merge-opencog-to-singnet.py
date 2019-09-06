@@ -177,6 +177,7 @@ api = GitHubApi(args.github_token)
 
 forks = get_forks(api)
 user = api.get_user()
+print("current git user:", user["login"])
 
 if args.action is None:
     clone_repos(api, forks)
