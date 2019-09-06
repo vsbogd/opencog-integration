@@ -125,13 +125,23 @@ def push_results(forks):
             raise Exception("could not push: {}".format(folder))
 
 def raise_prs(api, user, forks):
-    print("raise prs")
+    print("raise PRs")
+    no_changes = []
     for singnet_repo, opencog_repo in forks:
-        print(singnet_repo["name"], opencog_repo["name"])
         folder = singnet_repo["name"]
+        process = subprocess.run(["git", "diff", "--quiet",
+                                  "origin/master", "merge-opencog-to-singnet"],
+                                 cwd=folder)
+        if process.returncode == 0:
+            no_changes.append(singnet_repo["name"])
+            continue
+        else:
+            print("singnet/" + singnet_repo["name"], "<-", "opencog/" +
+                  opencog_repo["name"])
         api.raise_pr("singnet", singnet_repo["name"],
                      "Merge opencog -> singnet", "",
                      user["login"] + ":merge-opencog-to-singnet", "master")
+    print("no changes for repos:", no_changes)
 
 def run_ci(user, forks, args):
     print("run ci")
