@@ -52,13 +52,19 @@ class GitHubApi:
         return Request(url, headers=headers, method=method)
 
 def get_forks(api):
-    print("reading")
+    print("looking for opencog forks")
     singnet_forks = api.get_repos("singnet", type="forks")
     fork_and_parent = [(repo, api.get_url(repo["url"])["parent"]) for repo in
                    singnet_forks]
     opencog_forks = filter(lambda repo : repo[1]["owner"]["login"] == "opencog",
                         fork_and_parent)
-    return list(opencog_forks)
+    opencog_forks = list(opencog_forks)
+    print("forks found:", [repo[0]["name"] + ("(archived)" if repo[0]["archived"]
+                           or repo[1]["archived"] else "") for repo in
+                           opencog_forks])
+    opencog_forks = list(filter(lambda repo : not repo[0]["archived"] and not
+                           repo[1]["archived"], opencog_forks))
+    return opencog_forks
 
 def clone_repos(api, forks):
     print("cloning")
