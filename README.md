@@ -17,6 +17,22 @@ python merge-opencog-to-singnet.py \
 	--circleci-token <circleci-token>
 ```
 
+This command clones all forked `singnet` repos, creates new branches, merges
+latest opencog code to them. In case of merge conflict in some repo script
+stops. User should resolve conflict and make merge commit for the repo. Then
+script can be started again. It continues merging from next repo. After
+doing merge script pushes branches into user's github repo forks, starts CI on
+the set of branches and stops.
+
+User should check CI status manually and execute:
+```sh
+python merge-opencog-to-singnet.py \
+	--github-token <github-token> \
+	--circleci-token <circleci-token> \
+	--action raise
+```
+This command raises PRs from merge branches to the `singnet` repos.
+
 ## Github API token
 
 Github token is used to:
