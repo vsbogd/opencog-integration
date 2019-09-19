@@ -143,34 +143,40 @@ def raise_prs(api, user, forks):
                      user["login"] + ":merge-opencog-to-singnet", "master")
     print("no changes for repos:", no_changes)
 
-def run_ci(user, forks, args):
-    print("run ci")
+def run_ci(forks, user, branch):
+    print("run CI")
     parameters = {}
     url = "https://circleci.com/api/v1.1/project/github/vsbogd/opencog-integration/envvar?circle-token=" + args.circleci_token
     request = Request(url, method="POST", headers={ "Content-Type": "application/json" })
+    print("set build parameters")
     for singnet_repo, opencog_repo in forks:
-        print(singnet_repo["name"], opencog_repo["name"])
-        repo_url = "https://github.com/" + user["login"] + "/" + singnet_repo["name"] + ".git"
+        repo = singnet_repo["name"] if user != "opencog" else opencog_repo["name"]
+        repo_url = "https://github.com/" + user + "/" + repo + ".git"
         repo_name = opencog_repo["name"].upper()
         repo_name = re.sub(r"[^\w]", "", repo_name)
         #parameters[repo_name + "_REPO"] = repo_url
-        #parameters[repo_name + "_BRANCH"] = "merge-opencog-to-singnet"
+        #parameters[repo_name + "_BRANCH"] = branch
         data = json.dumps({ "name": repo_name + "_REPO",
                            "value": repo_url }).encode("utf-8")
         urlopen(request, data=data)
         data = json.dumps({ "name": repo_name + "_BRANCH",
-                           "value": "merge-opencog-to-singnet" }).encode("utf-8")
+                           "value": branch }).encode("utf-8")
         urlopen(request, data=data)
+        print(repo_name + "_REPO:", repo_url)
+        print(repo_name + "_BRANCH:", branch)
     url = "https://circleci.com/api/v1.1/project/github/vsbogd/opencog-integration/build?circle-token=" + args.circleci_token
     request = Request(url, method="POST")
-    data = { "build_parameters": parameters }
-    data = json.dumps(data).encode("utf-8")
+    #data = { "build_parameters": parameters }
+    #data = json.dumps(data).encode("utf-8")
+    print("trigger build using CircleCI API: POST", url)
     urlopen(request, data=data)
 
 parser = argparse.ArgumentParser(description="Merge opencog to singnet")
 parser.add_argument("--github-token", type=str)
 parser.add_argument("--circleci-token", type=str)
 parser.add_argument("--action", type=str, required=False, choices=["ci", "raise"])
+parser.add_argument("--ci-fork", type=str, required=False)
+parser.add_argument("--ci-branch", type=str, required=False, default="merge-opencog-to-singnet")
 args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
@@ -178,15 +184,17 @@ api = GitHubApi(args.github_token)
 forks = get_forks(api)
 user = api.get_user()
 print("current git user:", user["login"])
+if args.ci_fork is None:
+    args.ci_fork = user["login"]
 
 if args.action is None:
     clone_repos(api, forks)
     fetch_repos(forks)
     merge_opencog_to_singnet(forks)
     push_results(forks)
-    run_ci(user, forks, args)
+    run_ci(forks, user["login"], "merge-opencog-to-singnet")
 elif args.action == "ci":
-    run_ci(user, forks, args)
+    run_ci(forks, args.ci_fork, args.ci_branch)
 elif args.action == "raise":
     raise_prs(api, user, forks)
     
