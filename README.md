@@ -21,8 +21,7 @@ scratch.
 
 ## Restrictions
 
-Only single workflow instance can be running at the same time. There is two
-reasons for this.
+### Only single workflow instance can be running at the same time.
 
 Because of CircleCI API restrictions workflow cannot be started via API with
 parameters passed. It is workarounded by setting build properties before build
@@ -33,6 +32,11 @@ More serious restriction is using private DockerHub to keep fresh docker
 images. Right now workflow uses hardcoded tags to push images. This means that
 two jobs in parallel will push two images using same tag and finally will use
 the same docker image.
+
+### CircleCI job used is private CircleCI job
+
+Before making this infrastructure publically available few things should be
+addressed ([see below](#items-to-address)).
 
 # Merging script
 
