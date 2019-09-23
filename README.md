@@ -40,13 +40,16 @@ addressed ([see below](#items-to-address)).
 
 # Merging script
 
+## Merge opencog to singnet
+
 Script automatically merges `opencog` repos to `singnet` forks.
 
 In empty directory execute:
 ```sh
 python merge-opencog-to-singnet.py \
 	--github-token <github-token> \
-	--circleci-token <circleci-token>
+	--circleci-token <circleci-token> \
+	--action merge
 ```
 
 This command clones all forked `singnet` repos, creates new branches, merges
@@ -61,9 +64,35 @@ User should check CI status manually and execute:
 python merge-opencog-to-singnet.py \
 	--github-token <github-token> \
 	--circleci-token <circleci-token> \
-	--action raise
+	--action pr
 ```
 This command raises PRs from merge branches to the `singnet` repos.
+
+## Run CI
+
+One can use `--action ci` to run Circle CI integration job. This action has two
+parameters `--ci-fork` to set fork which should be used, and `--ci-branch` to
+set name of the branch. For example to rerun CI after merge one can execute:
+
+```sh
+python merge-opencog-to-singnet.py \
+	--github-token <github-token> \
+	--circleci-token <circleci-token> \
+	--action ci \
+	--ci-fork singnet \
+	--ci-branch master
+```
+
+## Cleanup
+
+Following command removes all merge branches from local and remote
+repositories:
+```sh
+python merge-opencog-to-singnet.py \
+	--github-token <github-token> \
+	--circleci-token <circleci-token> \
+	--action clean
+```
 
 ## Github API token
 
