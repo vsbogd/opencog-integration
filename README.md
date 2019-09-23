@@ -130,7 +130,6 @@ TODO:
 - find a way to run several integration builds simultaneously if required
 - add a check to not try raising PRs which are already raised
 - how to add privileges for adding new `ref` to repo (`tag` for instance)
-- remove previous merge branches
 - create repository for integration CircleCI and merge script and move code
   there
 - add `singularitynet` private dockerhub repos to keep intermediate dockers for
