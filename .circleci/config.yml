@@ -344,6 +344,7 @@ jobs:
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
+                    make -C /ws/cogserver/build install
                     git clone --depth 1 -b $ATTENTION_BRANCH $ATTENTION_REPO .
                     mkdir -p build
                     cd build
@@ -355,6 +356,39 @@ jobs:
                 root: /ws
                 paths:
                     - attention
+
+    build-cogserver:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/cogserver
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo COGSERVER_BRANCH=$COGSERVER_BRANCH
+                    echo COGSERVER_REPO=$COGSERVER_REPO
+            - run:
+                name: Build cogserver
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $COGSERVER_BRANCH $COGSERVER_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - cogserver
 
 workflows:
     version: 2
@@ -376,15 +410,19 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-atomspace
+            - build-cogserver:
+                context: dockerhub
+                requires:
+                    - build-atomspace
             - build-attention:
                 context: dockerhub
                 requires:
-                    - build-atomspace
+                    - build-cogserver
             - build-opencog:
                 context: dockerhub
                 requires:
-                    - build-attention
                     - build-atomspace
+                    - build-attention
             - build-moses:
                 context: dockerhub
                 requires:
