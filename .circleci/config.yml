@@ -150,6 +150,7 @@ jobs:
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
+                    make -C /ws/attention/build install
                     git clone --depth 1 -b $OPENCOG_BRANCH $OPENCOG_REPO .
                     mkdir -p build
                     cd build
@@ -322,6 +323,39 @@ jobs:
                     make tests
                     make test
 
+    build-attention:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/attention
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo ATTENTION_BRANCH=$ATTENTION_BRANCH
+                    echo ATTENTION_REPO=$ATTENTION_REPO
+            - run:
+                name: Build attention
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $ATTENTION_BRANCH $ATTENTION_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - attention
+
 workflows:
     version: 2
     complete_build:
@@ -342,9 +376,14 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-atomspace
+            - build-attention:
+                context: dockerhub
+                requires:
+                    - build-atomspace
             - build-opencog:
                 context: dockerhub
                 requires:
+                    - build-attention
                     - build-atomspace
             - build-moses:
                 context: dockerhub
