@@ -424,8 +424,9 @@ workflows:
             - build-opencog:
                 context: dockerhub
                 requires:
-                    - build-atomspace
+                    - build-docker
                     - build-attention
+                    - build-ure
             - build-moses:
                 context: dockerhub
                 requires:
