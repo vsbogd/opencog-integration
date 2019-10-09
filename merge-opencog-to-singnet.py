@@ -7,6 +7,7 @@ import re
 
 MERGE_BRANCH = "merge-opencog-to-singnet"
 MINE_REMOTE = "mine"
+MINE_REMOTE_HTTPS = "mine_https"
 
 class GitHubApi:
 
@@ -60,9 +61,9 @@ def branch_exists(folder, branch):
                               stdout=subprocess.DEVNULL, cwd=folder)
     return process.returncode == 0
 
-def run(cmd, **kargs):
+def run(cmd, stdout=subprocess.DEVNULL, **kargs):
     return subprocess.run(cmd, stderr=subprocess.STDOUT,
-                          stdout=subprocess.DEVNULL, **kargs)
+                          stdout=stdout, **kargs)
 
 def get_forks(api):
     print("looking for opencog forks")
@@ -91,6 +92,7 @@ def clone_repos(api, forks):
         run(["git", "remote", "add", "opencog", opencog_repo["ssh_url"]], cwd=folder)
         mine = api.create_fork(singnet_repo["owner"]["login"], singnet_repo["name"])
         run(["git", "remote", "add", MINE_REMOTE, mine["ssh_url"]], cwd=folder)
+        run(["git", "remote", "add", MINE_REMOTE_HTTPS, mine["clone_url"]], cwd=folder)
         print("cloned")
 
 def fetch_repos(forks):
@@ -166,15 +168,24 @@ def raise_prs(api, user, forks):
                      user["login"] + ":merge-opencog-to-singnet", "master")
     print("no changes for repos:", no_changes)
 
-def run_ci(forks, user, branch):
+def run_ci(forks, branch, user=None):
     print("run CI")
     parameters = {}
     url = "https://circleci.com/api/v1.1/project/github/vsbogd/opencog-integration/envvar?circle-token=" + args.circleci_token
     request = Request(url, method="POST", headers={ "Content-Type": "application/json" })
     print("set build parameters")
     for singnet_repo, opencog_repo in forks:
-        repo = singnet_repo["name"] if user != "opencog" else opencog_repo["name"]
-        repo_url = "https://github.com/" + user + "/" + repo + ".git"
+        if user is not None:
+            repo = singnet_repo["name"] if user != "opencog" else opencog_repo["name"]
+            repo_url = "https://github.com/" + user + "/" + repo + ".git"
+        else:
+            folder = singnet_repo["name"]
+            process = run(["git", "remote", "get-url", MINE_REMOTE_HTTPS],
+                    stdout=subprocess.PIPE, cwd=folder)
+            if process.returncode != 0:
+                raise Exception("could not get name of the fork which contains the merge result")
+            repo_url = process.stdout.decode("utf-8").strip()
+
         repo_name = opencog_repo["name"].upper()
         repo_name = re.sub(r"[^\w]", "", repo_name)
         #parameters[repo_name + "_REPO"] = repo_url
@@ -216,9 +227,9 @@ if args.action == "merge":
     fetch_repos(forks)
     merge_opencog_to_singnet(forks)
     push_results(forks)
-    run_ci(forks, user["login"], MERGE_BRANCH)
+    run_ci(forks, MERGE_BRANCH)
 elif args.action == "ci":
-    run_ci(forks, args.ci_fork, args.ci_branch)
+    run_ci(forks, args.ci_branch, user=args.ci_fork)
 elif args.action == "pr":
     raise_prs(api, user, forks)
 elif args.action == "clean":
