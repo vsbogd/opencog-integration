@@ -25,6 +25,7 @@ jobs:
                     OCPKG_URL=`echo ${OCPKG_REPO} | \
                         sed 's/github/raw.githubusercontent/' | \
                         sed 's~\.git$~/'${OCPKG_BRANCH}'/ocpkg~'`
+                    echo OCPKG_URL=$OCPKG_URL
                     sh ./docker-build.sh -u -b
                     docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
             - run:
@@ -32,6 +33,8 @@ jobs:
                 no_output_timeout: 60m
                 command: |
                     cd ./opencog
+                    echo RELEX_REPO=$RELEX_REPO
+                    echo RELEX_BRANCH=$RELEX_BRANCH
                     sh ./docker-build.sh -u -r
                     docker tag singularitynet/relex:latest vsbogdcircleci/singularitynet:relex
             - run:
@@ -41,6 +44,7 @@ jobs:
                     ATOM_SQL_URL=`echo ${ATOMSPACE_REPO} | \
                         sed 's/github/raw.githubusercontent/' | \
                         sed 's~\.git$~/'${ATOMSPACE_BRANCH}'/opencog/persist/sql/multi-driver/atom.sql~'`
+                    echo ATOM_SQL_URL=$ATOM_SQL_URL
                     sh ./docker-build.sh -u -p
                     docker tag singularitynet/postgres:latest vsbogdcircleci/singularitynet:postgres
             - run:
