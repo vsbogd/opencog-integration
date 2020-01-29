@@ -154,6 +154,8 @@ jobs:
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
+                    make -C /ws/ure/build install
+                    make -C /ws/pln/build install
                     make -C /ws/cogserver/build install
                     make -C /ws/attention/build install
                     git clone --depth 1 -b $OPENCOG_BRANCH $OPENCOG_REPO .
@@ -397,6 +399,41 @@ jobs:
                 paths:
                     - cogserver
 
+    build-pln:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/pln
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo PLN_BRANCH=$PLN_BRANCH
+                    echo PLN_REPO=$PLN_REPO
+            - run:
+                name: Build opencog
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    make -C /ws/ure/build install
+                    git clone --depth 1 -b $PLN_BRANCH $PLN_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - pln
+
+
 workflows:
     version: 2
     complete_build:
@@ -425,12 +462,17 @@ workflows:
                 context: dockerhub
                 requires:
                     - build-cogserver
+            - build-pln:
+                context: dockerhub
+                requires:
+                    - build-ure
             - build-opencog:
                 context: dockerhub
                 requires:
                     - build-docker
                     - build-attention
                     - build-ure
+                    - build-pln
             - build-moses:
                 context: dockerhub
                 requires:
