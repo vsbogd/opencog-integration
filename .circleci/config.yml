@@ -320,8 +320,6 @@ jobs:
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
-                    make -C /ws/cogserver/build install
-                    make -C /ws/attention/build install
                     make -C /ws/opencog/build install
                     git clone --depth 1 -b $LEARN_BRANCH $LEARN_REPO .
                     mkdir -p build
@@ -453,23 +451,32 @@ workflows:
             - build-ure:
                 context: dockerhub
                 requires:
+                    - build-cogutil
                     - build-atomspace
             - build-cogserver:
                 context: dockerhub
                 requires:
+                    - build-cogutil
                     - build-atomspace
             - build-attention:
                 context: dockerhub
                 requires:
+                    - build-cogutil
+                    - build-atomspace
                     - build-cogserver
             - build-pln:
                 context: dockerhub
                 requires:
+                    - build-cogutil
+                    - build-atomspace
                     - build-ure
             - build-opencog:
                 context: dockerhub
                 requires:
                     - build-docker
+                    - build-cogutil
+                    - build-atomspace
+                    - build-cogserver
                     - build-attention
                     - build-ure
                     - build-pln
@@ -480,12 +487,17 @@ workflows:
             - build-asmoses:
                 context: dockerhub
                 requires:
+                    - build-cogutil
                     - build-atomspace
             - build-miner:
                 context: dockerhub
                 requires:
+                    - build-cogutil
+                    - build-atomspace
                     - build-ure
             - build-learn:
                 context: dockerhub
                 requires:
+                    - build-cogutil
+                    - build-atomspace
                     - build-opencog
