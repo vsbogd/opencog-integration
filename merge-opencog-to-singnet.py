@@ -205,13 +205,38 @@ def run_ci(forks, branch, user=None):
     print("trigger build using CircleCI API: POST", url)
     urlopen(request, data=data)
 
+def tag_origin_master(forks, tag):
+    if tag is None:
+        raise Exception("Tag is not specified")
+    print("tagging master, tag: {}".format(tag))
+    for singnet_repo, opencog_repo in forks:
+        print(singnet_repo["name"], end=": ")
+        folder = singnet_repo["name"]
+        process = subprocess.run(["git", "rev-parse", "--verify", tag],
+                                 stderr=subprocess.STDOUT,
+                                 stdout=subprocess.DEVNULL, cwd=folder)
+        if process.returncode == 0:
+            print("skip - tagged already")
+            continue
+
+        process = run(["git", "tag", tag, "origin/master"], cwd=folder)
+        if process.returncode != 0:
+            print("fail")
+            raise Exception("could not create tag: {}".format(folder))
+        process = run(["git", "push", "origin", tag], cwd=folder)
+        if process.returncode != 0:
+            print("fail, could not push")
+        else:
+            print("tagged")
+
 parser = argparse.ArgumentParser(description="Merge opencog to singnet")
 parser.add_argument("--github-token", type=str)
 parser.add_argument("--circleci-token", type=str)
 parser.add_argument("--action", type=str, required=False, default="merge",
-                    choices=["merge", "ci", "pr", "clean"])
+                    choices=["merge", "ci", "pr", "clean", "tag"])
 parser.add_argument("--ci-fork", type=str, required=False)
 parser.add_argument("--ci-branch", type=str, required=False, default=MERGE_BRANCH)
+parser.add_argument("--tag", type=str, required=False)
 args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
@@ -234,3 +259,5 @@ elif args.action == "pr":
     raise_prs(api, user, forks)
 elif args.action == "clean":
     remove_old_merge_branches(forks)
+elif args.action == "tag":
+    tag_origin_master(forks, args.tag)
