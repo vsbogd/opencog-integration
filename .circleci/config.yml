@@ -26,7 +26,7 @@ jobs:
                         sed 's/github/raw.githubusercontent/' | \
                         sed 's~\.git$~/'${OCPKG_BRANCH}'/ocpkg~'`
                     echo OCPKG_URL=$OCPKG_URL
-                    sh ./docker-build.sh -u -b
+                    OCPKG_URL=$OCPKG_URL sh ./docker-build.sh -u -b
                     docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
             - run:
                 name: Build relex image
@@ -45,7 +45,7 @@ jobs:
                         sed 's/github/raw.githubusercontent/' | \
                         sed 's~\.git$~/'${ATOMSPACE_BRANCH}'/opencog/persist/sql/multi-driver/atom.sql~'`
                     echo ATOM_SQL_URL=$ATOM_SQL_URL
-                    sh ./docker-build.sh -u -p
+                    ATOM_SQL_URL=$ATOM_SQL_URL sh ./docker-build.sh -u -p
                     docker tag singularitynet/postgres:latest vsbogdcircleci/singularitynet:postgres
             - run:
                 name: Push images
