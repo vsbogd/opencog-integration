@@ -138,10 +138,6 @@ def push_results(forks):
     for singnet_repo, opencog_repo in forks:
         print(singnet_repo["name"], end=": ")
         folder = singnet_repo["name"]
-        if branch_exists(folder, MINE_REMOTE + "/" + MERGE_BRANCH):
-            print("skip - pushed already")
-            continue
-
         process = run(["git", "push", MINE_REMOTE, MERGE_BRANCH], cwd=folder)
         if process.returncode != 0:
             print("fail")
