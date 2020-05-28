@@ -123,8 +123,8 @@ def merge_opencog_to_singnet(forks):
         folder = singnet_repo["name"]
         if branch_exists(folder, MERGE_BRANCH):
             print("merge branch exists already")
-            continue
-        run(["git", "checkout", "-b", MERGE_BRANCH, "origin/master"], cwd=folder)
+        else:
+            run(["git", "checkout", "-b", MERGE_BRANCH, "origin/master"], cwd=folder)
         process = run(["git", "pull", "opencog", "master"], cwd=folder)
         if process.returncode != 0:
             print("could not merge automatically, please merge manually,",
