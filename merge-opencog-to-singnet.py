@@ -100,9 +100,7 @@ def fetch_repos(forks):
     for singnet_repo, _ in forks:
         print(singnet_repo["name"], end=": ")
         folder = singnet_repo["name"]
-        run(["git", "fetch", "-p", "origin"], cwd=folder)
-        run(["git", "fetch", "-p", "opencog"], cwd=folder)
-        run(["git", "fetch", "-p", MINE_REMOTE], cwd=folder)
+        run(["git", "fetch", "-all"], cwd=folder)
         print("fetched")
 
 def remove_old_merge_branches(forks):
@@ -233,7 +231,7 @@ parser = argparse.ArgumentParser(description="Merge opencog to singnet")
 parser.add_argument("--github-token", type=str)
 parser.add_argument("--circleci-token", type=str)
 parser.add_argument("--action", type=str, required=False, default="merge",
-                    choices=["merge", "ci", "pr", "clean", "tag"])
+                    choices=["fetch", "merge", "ci", "pr", "clean", "tag"])
 parser.add_argument("--ci-fork", type=str, required=False)
 parser.add_argument("--ci-branch", type=str, required=False, default=MERGE_BRANCH)
 parser.add_argument("--tag", type=str, required=False)
@@ -253,6 +251,9 @@ if args.action == "merge":
     merge_opencog_to_singnet(forks)
     push_results(forks)
     run_ci(forks, MERGE_BRANCH)
+elif args.action == "fetch":
+    clone_repos(api, forks)
+    fetch_repos(forks)
 elif args.action == "ci":
     run_ci(forks, args.ci_branch, user=args.ci_fork)
 elif args.action == "pr":
