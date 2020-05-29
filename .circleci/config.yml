@@ -2,6 +2,21 @@ version: 2.0
 
 jobs:
 
+    save-date:
+        docker:
+            - image: docker:19-git
+        working_directory: /ws
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Save date
+                command: date +%d-%m-%Y > /ws/date
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - date
+
     build-docker:
         docker:
             - image: docker:19-git
@@ -97,6 +112,7 @@ jobs:
                   PGHOST: opencog-postgres
                   PGUSER: opencog_test
                   PGPASSWORD: cheese
+                  CCACHE_DIR: /ws/atomspace-ccache
             - image: vsbogdcircleci/singularitynet:postgres
               auth:
                   username: $DOCKER_USERNAME
@@ -111,6 +127,8 @@ jobs:
                 command: |
                     echo ATOMSPACE_BRANCH=$ATOMSPACE_BRANCH
                     echo ATOMSPACE_REPO=$ATOMSPACE_REPO
+            - restore_cache:
+                key: atomspace-ccache-v1-{{ checksum "/ws/date" }}
             - run:
                 name: Build atomspace
                 command: |
@@ -126,6 +144,11 @@ jobs:
                 root: /ws
                 paths:
                     - atomspace
+            - save_cache:
+                when: always
+                key: atomspace-ccache-v1-{{ checksum "/ws/date" }}
+                paths:
+                    - /ws/atomspace-ccache
 
     build-opencog:
         docker:
@@ -177,6 +200,8 @@ jobs:
               auth:
                   username: $DOCKER_USERNAME
                   password: $DOCKER_PASSWORD
+              environment:
+                  CCACHE_DIR: /ws/moses-ccache
         working_directory: /ws/moses
         steps:
             - attach_workspace:
@@ -186,6 +211,8 @@ jobs:
                 command: |
                     echo MOSES_BRANCH=$MOSES_BRANCH
                     echo MOSES_REPO=$MOSES_REPO
+            - restore_cache:
+                key: moses-ccache-v1-{{ checksum "/ws/date" }}
             - run:
                 name: Build moses
                 command: |
@@ -197,6 +224,11 @@ jobs:
                     make
                     make tests
                     make test
+            - save_cache:
+                when: always
+                key: moses-ccache-v1-{{ checksum "/ws/date" }}
+                paths:
+                    - /ws/moses-ccache
 
     build-asmoses:
         docker:
@@ -205,6 +237,8 @@ jobs:
               auth:
                   username: $DOCKER_USERNAME
                   password: $DOCKER_PASSWORD
+              environment:
+                  CCACHE_DIR: /ws/asmoses-ccache
         working_directory: /ws/asmoses
         steps:
             - attach_workspace:
@@ -214,6 +248,8 @@ jobs:
                 command: |
                     echo ASMOSES_BRANCH=$ASMOSES_BRANCH
                     echo ASMOSES_REPO=$ASMOSES_REPO
+            - restore_cache:
+                key: asmoses-ccache-v1-{{ checksum "/ws/date" }}
             - run:
                 name: Build asmoses
                 command: |
@@ -226,6 +262,11 @@ jobs:
                     make
                     make tests
                     make test
+            - save_cache:
+                when: always
+                key: asmoses-ccache-v1-{{ checksum "/ws/date" }}
+                paths:
+                    - /ws/asmoses-ccache
 
     build-ure:
         docker:
@@ -437,10 +478,13 @@ workflows:
     version: 2
     complete_build:
         jobs:
+            - save-date
             - build-docker:
                 # Context here and below contains username and password for
                 # dockerhub repo to write/read singularitynet docker images
                 context: dockerhub
+                requires:
+                    - save-date
             - build-cogutil:
                 context: dockerhub
                 requires:
