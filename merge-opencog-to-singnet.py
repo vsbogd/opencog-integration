@@ -15,7 +15,8 @@ class GitHubApi:
         self.token = token
 
     def get_repos(self, org, type="all"):
-        request = self._get_request("GET", "/orgs/" + org + "/repos?type=" + type)
+        request = self._get_request("GET", "/orgs/" + org +
+                                    "/repos?per_page=1000&type=" + type)
         response = json.loads(urlopen(request).read())
         return response
 
