@@ -497,6 +497,7 @@ jobs:
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
+                    make -C /ws/cogserver/build install
                     git clone --depth 1 -b $VISUALIZATION_BRANCH $VISUALIZATION_REPO .
                     mkdir -p build
                     cd build
@@ -639,6 +640,7 @@ workflows:
                 requires:
                     - build-cogutil
                     - build-atomspace
+                    - build-cogserver
             - build-patternindex:
                 context: dockerhub
                 requires:
