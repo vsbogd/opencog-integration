@@ -127,6 +127,7 @@ jobs:
                 command: |
                     echo ATOMSPACE_BRANCH=$ATOMSPACE_BRANCH
                     echo ATOMSPACE_REPO=$ATOMSPACE_REPO
+                    echo -n "/ws/date: "; cat /ws/date
             - restore_cache:
                 key: atomspace-ccache-v1-{{ checksum "/ws/date" }}
             - run:
@@ -211,6 +212,7 @@ jobs:
                 command: |
                     echo MOSES_BRANCH=$MOSES_BRANCH
                     echo MOSES_REPO=$MOSES_REPO
+                    echo -n "/ws/date: "; cat /ws/date
             - restore_cache:
                 key: moses-ccache-v1-{{ checksum "/ws/date" }}
             - run:
@@ -248,6 +250,7 @@ jobs:
                 command: |
                     echo ASMOSES_BRANCH=$ASMOSES_BRANCH
                     echo ASMOSES_REPO=$ASMOSES_REPO
+                    echo -n "/ws/date: "; cat /ws/date
             - restore_cache:
                 key: asmoses-ccache-v1-{{ checksum "/ws/date" }}
             - run:
