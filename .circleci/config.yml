@@ -476,6 +476,90 @@ jobs:
                 paths:
                     - pln
 
+    build-visualization:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/visualization
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo VISUALIZATION_BRANCH=$VISUALIZATION_BRANCH
+                    echo VISUALIZATION_REPO=$VISUALIZATION_REPO
+            - run:
+                name: Build visualization
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $VISUALIZATION_BRANCH $VISUALIZATION_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+
+    build-patternindex:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/patternindex
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo PATTERNINDEX_BRANCH=$PATTERNINDEX_BRANCH
+                    echo PATTERNINDEX_REPO=$PATTERNINDEX_REPO
+            - run:
+                name: Build patternindex
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $PATTERNINDEX_BRANCH $PATTERNINDEX_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+
+    build-spacetime:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/spacetime
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo SPACETIME_BRANCH=$SPACETIME_BRANCH
+                    echo SPACETIME_REPO=$SPACETIME_REPO
+            - run:
+                name: Build spacetime
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $SPACETIME_BRANCH $SPACETIME_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
 
 workflows:
     version: 2
@@ -550,3 +634,18 @@ workflows:
                     - build-atomspace
                     - build-cogserver
                     - build-opencog
+            - build-visualization:
+                context: dockerhub
+                requires:
+                    - build-cogutil
+                    - build-atomspace
+            - build-patternindex:
+                context: dockerhub
+                requires:
+                    - build-cogutil
+                    - build-atomspace
+            - build-spacetime:
+                context: dockerhub
+                requires:
+                    - build-cogutil
+                    - build-atomspace
