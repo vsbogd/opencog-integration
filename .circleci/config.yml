@@ -459,7 +459,7 @@ jobs:
                     echo PLN_BRANCH=$PLN_BRANCH
                     echo PLN_REPO=$PLN_REPO
             - run:
-                name: Build opencog
+                name: Build pln
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
