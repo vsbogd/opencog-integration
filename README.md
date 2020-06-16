@@ -68,6 +68,31 @@ python merge-opencog-to-singnet.py \
 ```
 This command raises PRs from merge branches to the `singnet` repos.
 
+After merging PRs one should tag fresh release using tag in form
+`release-YYYYMMDD`:
+```sh
+python merge-opencog-to-singnet.py \
+	--github-token <github-token> \
+	--circleci-token <circleci-token> \
+	--action tag --tag <tag>
+```
+
+Then build and publish opencog dockers for CI. First login to the dockerhub
+using:
+```sh
+docker login -u <dockerhub-username>
+```
+
+Build and publish dockers using merge script (tag should be the tag used to
+mark release above):
+```sh
+python merge-opencog-to-singnet.py \
+	--github-token <github-token> \
+	--circleci-token <circleci-token> \
+	--action docker --tag <tag>
+```
+
+
 ## Run CI
 
 One can use `--action ci` to run Circle CI integration job. This action has two

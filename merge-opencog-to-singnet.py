@@ -4,6 +4,7 @@ import json
 import subprocess
 import os
 import re
+import sys
 
 MERGE_BRANCH = "merge-opencog-to-singnet"
 MINE_REMOTE = "mine"
@@ -224,11 +225,71 @@ def tag_origin_master(forks, tag):
         else:
             print("tagged")
 
+def check_process(process, message):
+    if process.returncode != 0:
+        print("fail")
+        raise Exception(message)
+
+def tag_and_push_docker(image_name, origin, tags):
+    for tag in tags:
+        process = run(["docker", "tag", image_name + ":" + origin, image_name + ":" + tag])
+        check_process(process, "could not tag " + image_name + ":" + origin)
+        process = run(["docker", "push", image_name + ":" + tag])
+        check_process(process, "could not push " + image_name + ":" + tag
+                + ", are you logged in to the dockerhub?")
+    process = run(["docker", "push", image_name + ":" + origin])
+    check_process(process, "could not push " + image_name + ":" + origin
+            + ", are you logged in to the dockerhub?")
+
+def publish_dockers(tag):
+    if tag is None:
+        raise Exception("Tag is not specified")
+
+    print("building singularitynet/opencog-deps image, tag: {}".format(tag));
+    ocpkg_url = "https://raw.githubusercontent.com/singnet/ocpkg/" + tag + "/ocpkg"
+    print("ocpkg URL: {}".format(ocpkg_url))
+    process = run(["./docker-build.sh", "-b"], cwd="opencog-docker/opencog",
+                  env={ "OCPKG_URL": ocpkg_url }, stdout=sys.stdout)
+    check_process(process, "could not build singularitynet/opencog-deps docker image")
+    tag_and_push_docker("singularitynet/opencog-deps", "latest", [tag])
+
+    print("building singularitynet/cogutil image, tag: {}".format(tag));
+    process = run(["./docker-build.sh", "-c"], cwd="opencog-docker/opencog",
+                  stdout=sys.stdout)
+    check_process(process, "could not build singularitynet/cogutil docker image")
+    tag_and_push_docker("singularitynet/cogutil", "latest", [tag])
+
+    print("building singularitynet/relex image, tag: {}".format(tag));
+    print("relex tag: {}".format(tag))
+    process = run(["./docker-build.sh", "-r"], cwd="opencog-docker/opencog",
+                  env={ "RELEX_REPO": "https://github.com/singnet/relex",
+                       "RELEX_BRANCH": tag }, stdout=sys.stdout)
+    check_process(process, "could not build singularitynet/relex docker image")
+    tag_and_push_docker("singularitynet/relex", "latest", [tag])
+
+    print("building singularitynet/postgres image, tag: {}".format(tag));
+    atom_sql_url = ("https://raw.githubusercontent.com/singnet/atomspace/" + tag
+                    + "/opencog/persist/sql/multi-driver/atom.sql")
+    print("atomspace SQL URL: {}".format(atom_sql_url))
+    process = run(["./docker-build.sh", "-p"], cwd="opencog-docker/opencog",
+                  env={ "ATOM_SQL_URL": atom_sql_url },
+                  stdout=sys.stdout)
+    check_process(process, "could not build singularitynet/postgres docker image")
+    tag_and_push_docker("singularitynet/postgres", "latest", [tag])
+
+    print("building singularitynet/opencog-dev image, tag: {}".format(tag));
+    process = run(["./docker-build.sh", "-t"], cwd="opencog-docker/opencog",
+                  stdout=sys.stdout)
+    check_process(process, "could not build singularitynet/opencog-dev docker image")
+    tag_and_push_docker("singularitynet/opencog-dev", "cli", [tag, "latest"])
+
+
 parser = argparse.ArgumentParser(description="Merge opencog to singnet")
 parser.add_argument("--github-token", type=str)
 parser.add_argument("--circleci-token", type=str)
 parser.add_argument("--action", type=str, required=False, default="merge",
-                    choices=["fetch", "merge", "ci", "pr", "clean", "tag"])
+                    choices=["fetch", "merge", "ci", "pr", "clean", "tag",
+                    "docker"])
 parser.add_argument("--ci-fork", type=str, required=False)
 parser.add_argument("--ci-branch", type=str, required=False, default=MERGE_BRANCH)
 parser.add_argument("--tag", type=str, required=False)
@@ -259,3 +320,5 @@ elif args.action == "clean":
     remove_old_merge_branches(forks)
 elif args.action == "tag":
     tag_origin_master(forks, args.tag)
+elif args.action == "docker":
+    publish_dockers(args.tag)
