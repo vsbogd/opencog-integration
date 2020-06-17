@@ -493,6 +493,11 @@ jobs:
                     echo VISUALIZATION_BRANCH=$VISUALIZATION_BRANCH
                     echo VISUALIZATION_REPO=$VISUALIZATION_REPO
             - run:
+                name: Install GTK3
+                command: |
+                    apt-get update
+                    apt-get install libgtk-3-dev -y
+            - run:
                 name: Build visualization
                 command: |
                     make -C /ws/cogutil/build install
