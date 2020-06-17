@@ -5,6 +5,8 @@ import subprocess
 import os
 import re
 import sys
+import datetime
+import time
 
 MERGE_BRANCH = "merge-opencog-to-singnet"
 MINE_REMOTE = "mine"
@@ -288,8 +290,8 @@ parser = argparse.ArgumentParser(description="Merge opencog to singnet")
 parser.add_argument("--github-token", type=str)
 parser.add_argument("--circleci-token", type=str)
 parser.add_argument("--action", type=str, required=False, default="merge",
-                    choices=["fetch", "merge", "ci", "pr", "clean", "tag",
-                    "docker"])
+                    choices=["merge", "release", "fetch", "ci", "pr", "clean",
+                        "tag", "docker"])
 parser.add_argument("--ci-fork", type=str, required=False)
 parser.add_argument("--ci-branch", type=str, required=False, default=MERGE_BRANCH)
 parser.add_argument("--tag", type=str, required=False)
@@ -297,28 +299,43 @@ args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
 
-forks = get_forks(api)
 user = api.get_user()
 print("current git user:", user["login"])
 if args.ci_fork is None:
     args.ci_fork = user["login"]
 
 if args.action == "merge":
+    forks = get_forks(api)
     clone_repos(api, forks)
     fetch_repos(forks)
     merge_opencog_to_singnet(forks)
     push_results(forks)
     run_ci(forks, MERGE_BRANCH)
+elif args.action == "release":
+    tag = args.tag
+    if tag is None:
+        tag = "release-" + datetime.date.today().strftime("%Y%m%d")
+    print("releasing {} tag".format(tag))
+    print("last chance to exit, waiting for 10 seconds...")
+    time.sleep(10)
+    forks = get_forks(api)
+    tag_origin_master(forks, tag)
+    publish_dockers(tag)
 elif args.action == "fetch":
+    forks = get_forks(api)
     clone_repos(api, forks)
     fetch_repos(forks)
 elif args.action == "ci":
+    forks = get_forks(api)
     run_ci(forks, args.ci_branch, user=args.ci_fork)
 elif args.action == "pr":
+    forks = get_forks(api)
     raise_prs(api, user, forks)
 elif args.action == "clean":
+    forks = get_forks(api)
     remove_old_merge_branches(forks)
 elif args.action == "tag":
+    forks = get_forks(api)
     tag_origin_master(forks, args.tag)
 elif args.action == "docker":
     publish_dockers(args.tag)

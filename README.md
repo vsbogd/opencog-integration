@@ -68,30 +68,20 @@ python merge-opencog-to-singnet.py \
 ```
 This command raises PRs from merge branches to the `singnet` repos.
 
-After merging PRs one should tag fresh release using tag in form
-`release-YYYYMMDD`:
-```sh
-python merge-opencog-to-singnet.py \
-	--github-token <github-token> \
-	--circleci-token <circleci-token> \
-	--action tag --tag <tag>
-```
-
-Then build and publish opencog dockers for CI. First login to the dockerhub
+After merging PRs new repo state can be released using `release` command.
+Before releasing and publishing dockers user should be logged to the dockerhub
 using:
 ```sh
 docker login -u <dockerhub-username>
 ```
-
-Build and publish dockers using merge script (tag should be the tag used to
-mark release above):
+After this one can release using:
 ```sh
 python merge-opencog-to-singnet.py \
 	--github-token <github-token> \
-	--circleci-token <circleci-token> \
-	--action docker --tag <tag>
+	--action release
 ```
-
+By default release tags merge results using `release-YYYYMMDD` tag and
+publish dockers with this tag. Tag can be changed using `--tag` parameter.
 
 ## Run CI
 
