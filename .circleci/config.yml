@@ -130,6 +130,8 @@ jobs:
                     echo -n "/ws/date: "; cat /ws/date
             - restore_cache:
                 key: atomspace-ccache-v1-{{ checksum "/ws/date" }}
+            - restore_cache:
+                key: atomspace-stack-v1
             - run:
                 name: Build atomspace
                 command: |
@@ -150,6 +152,11 @@ jobs:
                 key: atomspace-ccache-v1-{{ checksum "/ws/date" }}
                 paths:
                     - /ws/atomspace-ccache
+            - save_cache:
+                when: always
+                key: atomspace-stack-v1
+                paths:
+                    - /root/.stack
 
     build-opencog:
         docker:
