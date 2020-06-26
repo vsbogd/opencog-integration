@@ -2,20 +2,29 @@ version: 2.0
 
 jobs:
 
-    save-date:
+    prepare-build:
         docker:
-            - image: docker:19-git
-        working_directory: /ws
+            - image: circleci/python:3.7.6
+        working_directory: ~/ws
         steps:
             - attach_workspace:
-                at: /ws
+                at: ~/ws
+            - checkout:
+                path: ./opencog-integration
             - run:
                 name: Save date
-                command: date +%d-%m-%Y > /ws/date
+                command: date +%d-%m-%Y > ~/ws/date
+            - run:
+                name: Calculate versions
+                command: |
+                  cd ./opencog-integration
+                  python calculate_versions.py > ../versions
+                  cat ../versions
             - persist_to_workspace:
-                root: /ws
+                root: ~/ws
                 paths:
                     - date
+                    - versions
 
     build-docker:
         docker:
@@ -578,13 +587,13 @@ workflows:
     version: 2
     complete_build:
         jobs:
-            - save-date
+            - prepare-build
             - build-docker:
                 # Context here and below contains username and password for
                 # dockerhub repo to write/read singularitynet docker images
                 context: dockerhub
                 requires:
-                    - save-date
+                    - prepare-build
             - build-cogutil:
                 context: dockerhub
                 requires:
