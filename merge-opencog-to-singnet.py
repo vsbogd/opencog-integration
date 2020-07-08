@@ -120,7 +120,7 @@ def fetch_repos(forks, sn_to_oc=False):
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
         print(dst_repo["name"], end=": ")
         folder = dst_repo["name"]
-        run(["git", "fetch", "-all"], cwd=folder)
+        run(["git", "fetch", "--all"], cwd=folder)
         print("fetched")
 
 def remove_old_merge_branches(forks, sn_to_oc=False):
