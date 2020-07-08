@@ -78,7 +78,7 @@ def src_dst_repo(singnet_repo, opencog_repo, sn_to_oc):
     dst_repo = opencog_repo if sn_to_oc else singnet_repo
     return src_repo, dst_repo
 
-def merge_branch(src_prj, dst_prj):
+def merge_branch_name(src_prj, dst_prj):
     return "merge-" + src_prj + "-to-" + dst_prj
 
 def get_forks(api):
@@ -97,7 +97,6 @@ def get_forks(api):
     return opencog_forks
 
 def clone_repos(api, forks, sn_to_oc=False):
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
     print("cloning repositories:")
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
@@ -125,8 +124,6 @@ def fetch_repos(forks, sn_to_oc=False):
 
 def remove_old_merge_branches(forks, sn_to_oc=False):
     print("remove old merge branches:")
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
-    mrg_bch = merge_branch(src_prj, dst_prj)
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
         print(dst_repo["name"], end=": ")
@@ -140,9 +137,7 @@ def remove_old_merge_branches(forks, sn_to_oc=False):
         print("removed")
 
 def merge_opencog_to_singnet(forks, sn_to_oc=False):
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
     print("merging", src_prj, "to", dst_prj + ":")
-    mrg_bch = merge_branch(src_prj, dst_prj)
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
         print(src_repo["name"], "->", dst_repo["name"], end=": ")
@@ -161,8 +156,6 @@ def merge_opencog_to_singnet(forks, sn_to_oc=False):
 
 def push_results(forks, sn_to_oc=False):
     print("push results:")
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
-    mrg_bch = merge_branch(src_prj, dst_prj)
     for singnet_repo, opencog_repo in forks:
         dst_repo = opencog_repo if sn_to_oc else singnet_repo
         print(dst_repo["name"], end=": ")
@@ -175,8 +168,6 @@ def push_results(forks, sn_to_oc=False):
 
 def raise_prs(api, user, forks, sn_to_oc=False):
     print("raise PRs")
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
-    mrg_bch = merge_branch(src_prj, dst_prj)
     no_changes = []
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
@@ -196,7 +187,6 @@ def raise_prs(api, user, forks, sn_to_oc=False):
 
 def run_ci(forks, branch, user=None, sn_to_oc=False):
     print("run CI")
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
     parameters = {}
     url = "https://circleci.com/api/v1.1/project/github/vsbogd/opencog-integration/envvar?circle-token=" + args.circleci_token
     request = Request(url, method="POST", headers={ "Content-Type": "application/json" })
@@ -237,7 +227,6 @@ def tag_origin_master(forks, tag, sn_to_oc=False):
     if tag is None:
         raise Exception("Tag is not specified")
     print("tagging master, tag: {}".format(tag))
-    src_prj, dst_prj = src_dst_prj(sn_to_oc)
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
         print(singnet_repo["name"], end=": ")
@@ -325,17 +314,21 @@ parser.add_argument("--action", type=str, required=False, default="merge",
                     choices=["merge", "release", "fetch", "ci", "pr", "clean",
                         "tag", "docker"])
 parser.add_argument("--ci-fork", type=str, required=False)
-parser.add_argument("--ci-branch", type=str, required=False,
-                    default=merge_branch("opencog", "singnet"))
+parser.add_argument("--ci-branch", type=str, required=False)
 parser.add_argument("--tag", type=str, required=False)
 parser.add_argument("--singnet-to-opencog", action="store_true")
 parser.set_defaults(singnet_to_opencog=False)
 args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
-
 user = api.get_user()
 print("current git user:", user["login"])
+
+src_prj, dst_prj = src_dst_prj(args.singnet_to_opencog)
+mrg_bch = merge_branch_name(src_prj, dst_prj)
+
+if args.ci_branch is None:
+    args.ci_branch = mrg_bch
 if args.ci_fork is None:
     args.ci_fork = user["login"]
 
@@ -345,7 +338,7 @@ if args.action == "merge":
     fetch_repos(forks, args.singnet_to_opencog)
     merge_opencog_to_singnet(forks, args.singnet_to_opencog)
     push_results(forks, args.singnet_to_opencog)
-    run_ci(forks, MERGE_BRANCH, singnet_to_opencog=args.singnet_to_opencog)
+    run_ci(forks, mrg_bch, singnet_to_opencog=args.singnet_to_opencog)
 elif args.action == "release":
     tag = args.tag
     if tag is None:
