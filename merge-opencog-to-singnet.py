@@ -108,6 +108,7 @@ def clone_repos(api, forks, sn_to_oc=False):
             continue
         run(["git", "clone", dst_repo["ssh_url"], folder])
         run(["git", "remote", "add", src_prj, src_repo["ssh_url"]], cwd=folder)
+        run(["git", "remote", "add", dst_prj, dst_repo["ssh_url"]], cwd=folder)
         mine = api.create_fork(dst_repo["owner"]["login"], dst_repo["name"])
         run(["git", "remote", "add", MINE_REMOTE, mine["ssh_url"]], cwd=folder)
         run(["git", "remote", "add", MINE_REMOTE_HTTPS, mine["clone_url"]], cwd=folder)
@@ -124,6 +125,7 @@ def fetch_repos(forks, sn_to_oc=False):
 
 def remove_old_merge_branches(forks, sn_to_oc=False):
     print("remove old merge branches:")
+    src_prj, dst_prj = src_dst_prj(sn_to_oc)
     mrg_bch = merge_branch(src_prj, dst_prj)
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
@@ -148,7 +150,7 @@ def merge_opencog_to_singnet(forks, sn_to_oc=False):
         if branch_exists(folder, mrg_bch):
             print("merge branch exists already")
         else:
-            run(["git", "checkout", "-b", mrg_bch, "origin/master"], cwd=folder)
+            run(["git", "checkout", "-b", mrg_bch, dst_prj + "/master"], cwd=folder)
         process = run(["git", "pull", src_prj, "master"], cwd=folder)
         if process.returncode != 0:
             print("could not merge automatically, please merge manually,",
@@ -179,7 +181,7 @@ def raise_prs(api, user, forks, sn_to_oc=False):
     for singnet_repo, opencog_repo in forks:
         src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
         folder = dst_repo["name"]
-        process = run(["git", "diff", "--quiet", "origin/master", mrg_bch],
+        process = run(["git", "diff", "--quiet", dst_prj + "/master", mrg_bch],
                       cwd=folder)
         if process.returncode == 0:
             no_changes.append(dst_repo["name"])
@@ -231,11 +233,13 @@ def run_ci(forks, branch, user=None, sn_to_oc=False):
     print("trigger build using CircleCI API: POST", url)
     urlopen(request, data=data)
 
-def tag_origin_master(forks, tag):
+def tag_origin_master(forks, tag, sn_to_oc=False):
     if tag is None:
         raise Exception("Tag is not specified")
     print("tagging master, tag: {}".format(tag))
+    src_prj, dst_prj = src_dst_prj(sn_to_oc)
     for singnet_repo, opencog_repo in forks:
+        src_repo, dst_repo = src_dst_repo(singnet_repo, opencog_repo, sn_to_oc)
         print(singnet_repo["name"], end=": ")
         folder = singnet_repo["name"]
         process = subprocess.run(["git", "rev-parse", "--verify", tag],
@@ -245,11 +249,11 @@ def tag_origin_master(forks, tag):
             print("skip - tagged already")
             continue
 
-        process = run(["git", "tag", tag, "origin/master"], cwd=folder)
+        process = run(["git", "tag", tag, dst_repo + "/master"], cwd=folder)
         if process.returncode != 0:
             print("fail")
             raise Exception("could not create tag: {}".format(folder))
-        process = run(["git", "push", "origin", tag], cwd=folder)
+        process = run(["git", "push", dst_prj, tag], cwd=folder)
         if process.returncode != 0:
             print("fail, could not push")
         else:
@@ -351,7 +355,7 @@ elif args.action == "release":
     time.sleep(10)
     forks = get_forks(api)
     if not args.singnet_to_opencog:
-        tag_origin_master(forks, tag)
+        tag_origin_master(forks, tag, args.singnet_to_opencog)
     publish_dockers(tag)
 elif args.action == "fetch":
     forks = get_forks(api)
@@ -368,10 +372,7 @@ elif args.action == "clean":
     forks = get_forks(api)
     remove_old_merge_branches(forks, args.singnet_to_opencog)
 elif args.action == "tag":
-    if args.singnet_to_opencog:
-        forks = get_forks(api)
-        tag_origin_master(forks, args.tag)
-    else:
-        print("For now tag is only supported for opencog->singnet")
+    forks = get_forks(api)
+    tag_origin_master(forks, args.tag, args.singnet_to_opencog)
 elif args.action == "docker":
     publish_dockers(args.tag)
