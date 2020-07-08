@@ -84,34 +84,40 @@ def get_forks(api):
                            repo[1]["archived"], opencog_forks))
     return opencog_forks
 
-def clone_repos(api, forks):
+def clone_repos(api, forks, singnet_to_opencog=False):
     print("cloning repositories:")
     for singnet_repo, opencog_repo in forks:
-        print(singnet_repo["name"], end=": ")
-        folder = singnet_repo["name"]
+        src_repo = singnet_repo if singnet_to_opencog else opencog_repo
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        src_prj = "singnet" if singnet_to_opencog else "opencog"
+        print(dst_repo["name"], end=": ")
+        folder = dst_repo["name"]
         if os.path.isdir(folder):
             print("skip - exists already")
             continue
-        run(["git", "clone", singnet_repo["ssh_url"], folder])
-        run(["git", "remote", "add", "opencog", opencog_repo["ssh_url"]], cwd=folder)
-        mine = api.create_fork(singnet_repo["owner"]["login"], singnet_repo["name"])
+        run(["git", "clone", dst_repo["ssh_url"], folder])
+        run(["git", "remote", "add", src_prj, src_repo["ssh_url"]], cwd=folder)
+        mine = api.create_fork(dst_repo["owner"]["login"], dst_repo["name"])
         run(["git", "remote", "add", MINE_REMOTE, mine["ssh_url"]], cwd=folder)
         run(["git", "remote", "add", MINE_REMOTE_HTTPS, mine["clone_url"]], cwd=folder)
         print("cloned")
 
-def fetch_repos(forks):
+def fetch_repos(forks, singnet_to_opencog=False):
     print("fetching repositories:")
-    for singnet_repo, _ in forks:
-        print(singnet_repo["name"], end=": ")
-        folder = singnet_repo["name"]
+    for singnet_repo, opencog_repo in forks:
+        src_repo = singnet_repo if singnet_to_opencog else opencog_repo
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        print(dst_repo["name"], end=": ")
+        folder = dst_repo["name"]
         run(["git", "fetch", "-all"], cwd=folder)
         print("fetched")
 
-def remove_old_merge_branches(forks):
+def remove_old_merge_branches(forks, singnet_to_opencog=False):
     print("remove old merge branches:")
-    for singnet_repo, _ in forks:
-        print(singnet_repo["name"], end=": ")
-        folder = singnet_repo["name"]
+    for singnet_repo, opencog_repo in forks:
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        print(dst_repo["name"], end=": ")
+        folder = dst_repo["name"]
         if not branch_exists(folder, MINE_REMOTE + "/" + MERGE_BRANCH):
             print("skip - doesn't exist")
             continue
@@ -120,71 +126,82 @@ def remove_old_merge_branches(forks):
         run(["git", "branch", "-D", MERGE_BRANCH], cwd=folder)
         print("removed")
 
-def merge_opencog_to_singnet(forks):
+def merge_opencog_to_singnet(forks, singnet_to_opencog=False):
     print("merging opencog to singnet:")
     for singnet_repo, opencog_repo in forks:
-        print(opencog_repo["name"], "->", singnet_repo["name"], end=": ")
-        folder = singnet_repo["name"]
+        src_repo = singnet_repo if singnet_to_opencog else opencog_repo
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        src_prj = "singnet" if singnet_to_opencog else "opencog"
+        print(src_repo["name"], "->", dst_repo["name"], end=": ")
+        folder = dst_repo["name"]
         if branch_exists(folder, MERGE_BRANCH):
             print("merge branch exists already")
         else:
             run(["git", "checkout", "-b", MERGE_BRANCH, "origin/master"], cwd=folder)
-        process = run(["git", "pull", "opencog", "master"], cwd=folder)
+        process = run(["git", "pull", src_prj, "master"], cwd=folder)
         if process.returncode != 0:
             print("could not merge automatically, please merge manually,",
                   "commit results, and restart script")
             raise Exception("could not merge automatically: {} -> {}".format(
-                opencog_repo["name"], singnet_repo["name"]))
+                src_repo["name"], dst_repo["name"]))
         print("merged automatically")
 
-def push_results(forks):
+def push_results(forks, singnet_to_opencog=False):
     print("push results:")
     for singnet_repo, opencog_repo in forks:
-        print(singnet_repo["name"], end=": ")
-        folder = singnet_repo["name"]
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        print(dst_repo["name"], end=": ")
+        folder = dst_repo["name"]
         process = run(["git", "push", MINE_REMOTE, MERGE_BRANCH], cwd=folder)
         if process.returncode != 0:
             print("fail")
             raise Exception("could not push: {}".format(folder))
         print("pushed")
 
-def raise_prs(api, user, forks):
+def raise_prs(api, user, forks, singnet_to_opencog=False):
     print("raise PRs")
     no_changes = []
     for singnet_repo, opencog_repo in forks:
-        folder = singnet_repo["name"]
+        src_repo = singnet_repo if singnet_to_opencog else opencog_repo
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        src_prj = "singnet" if singnet_to_opencog else "opencog"
+        dst_prj = "opencog" if singnet_to_opencog else "singnet"
+        folder = dst_repo["name"]
         process = run(["git", "diff", "--quiet", "origin/master",
                        MERGE_BRANCH], cwd=folder)
         if process.returncode == 0:
-            no_changes.append(singnet_repo["name"])
+            no_changes.append(dst_repo["name"])
             continue
         else:
-            print("singnet/" + singnet_repo["name"], "<-", "opencog/" +
-                  opencog_repo["name"])
-        api.raise_pr("singnet", singnet_repo["name"],
-                     "Merge opencog -> singnet", "",
-                     user["login"] + ":merge-opencog-to-singnet", "master")
+            print(dst_prj + "/" + dst_repo["name"], "<-",
+                  src_prj + "/" + opencog_repo["name"])
+        api.raise_pr(dst_prj, dst_repo["name"],
+                     "Merge " + src_prj + " -> " + dst_prj, "",
+                     user["login"] + ":" + MERGE_BRANCH, "master")
     print("no changes for repos:", no_changes)
 
-def run_ci(forks, branch, user=None):
+def run_ci(forks, branch, user=None, singnet_to_opencog=False):
     print("run CI")
     parameters = {}
     url = "https://circleci.com/api/v1.1/project/github/vsbogd/opencog-integration/envvar?circle-token=" + args.circleci_token
     request = Request(url, method="POST", headers={ "Content-Type": "application/json" })
     print("set build parameters")
     for singnet_repo, opencog_repo in forks:
+        src_repo = singnet_repo if singnet_to_opencog else opencog_repo
+        dst_repo = opencog_repo if singnet_to_opencog else singnet_repo
+        src_prj = "singnet" if singnet_to_opencog else "opencog"
         if user is not None:
-            repo = singnet_repo["name"] if user != "opencog" else opencog_repo["name"]
+            repo = dst_repo["name"] if user != src_prj else src_repo["name"]
             repo_url = "https://github.com/" + user + "/" + repo + ".git"
         else:
-            folder = singnet_repo["name"]
+            folder = dst_repo["name"]
             process = run(["git", "remote", "get-url", MINE_REMOTE_HTTPS],
                     stdout=subprocess.PIPE, cwd=folder)
             if process.returncode != 0:
                 raise Exception("could not get name of the fork which contains the merge result")
             repo_url = process.stdout.decode("utf-8").strip()
 
-        repo_name = opencog_repo["name"].upper()
+        repo_name = src_repo["name"].upper()
         repo_name = re.sub(r"[^\w]", "", repo_name)
         #parameters[repo_name + "_REPO"] = repo_url
         #parameters[repo_name + "_BRANCH"] = branch
@@ -295,9 +312,14 @@ parser.add_argument("--action", type=str, required=False, default="merge",
 parser.add_argument("--ci-fork", type=str, required=False)
 parser.add_argument("--ci-branch", type=str, required=False, default=MERGE_BRANCH)
 parser.add_argument("--tag", type=str, required=False)
+parser.add_argument("--singnet-to-opencog", action="store_true")
+parser.set_defaults(singnet_to_opencog=False)
 args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
+
+if args.singnet_to_opencog:
+    MERGE_BRANCH="merge-singnet-to-opencog"
 
 user = api.get_user()
 print("current git user:", user["login"])
@@ -306,11 +328,11 @@ if args.ci_fork is None:
 
 if args.action == "merge":
     forks = get_forks(api)
-    clone_repos(api, forks)
-    fetch_repos(forks)
-    merge_opencog_to_singnet(forks)
-    push_results(forks)
-    run_ci(forks, MERGE_BRANCH)
+    clone_repos(api, forks, args.singnet_to_opencog)
+    fetch_repos(forks, args.singnet_to_opencog)
+    merge_opencog_to_singnet(forks, args.singnet_to_opencog)
+    push_results(forks, args.singnet_to_opencog)
+    run_ci(forks, MERGE_BRANCH, singnet_to_opencog=args.singnet_to_opencog)
 elif args.action == "release":
     tag = args.tag
     if tag is None:
@@ -319,23 +341,27 @@ elif args.action == "release":
     print("last chance to exit, waiting for 10 seconds...")
     time.sleep(10)
     forks = get_forks(api)
-    tag_origin_master(forks, tag)
+    if not args.singnet_to_opencog:
+        tag_origin_master(forks, tag)
     publish_dockers(tag)
 elif args.action == "fetch":
     forks = get_forks(api)
-    clone_repos(api, forks)
-    fetch_repos(forks)
+    clone_repos(api, forks, args.singnet_to_opencog)
+    fetch_repos(forks, args.singnet_to_opencog)
 elif args.action == "ci":
     forks = get_forks(api)
-    run_ci(forks, args.ci_branch, user=args.ci_fork)
+    run_ci(forks, args.ci_branch, user=args.ci_fork, singnet_to_opencog=args.singnet_to_opencog)
 elif args.action == "pr":
     forks = get_forks(api)
-    raise_prs(api, user, forks)
+    raise_prs(api, user, forks, args.singnet_to_opencog)
 elif args.action == "clean":
     forks = get_forks(api)
-    remove_old_merge_branches(forks)
+    remove_old_merge_branches(forks, args.singnet_to_opencog)
 elif args.action == "tag":
-    forks = get_forks(api)
-    tag_origin_master(forks, args.tag)
+    if args.singnet_to_opencog:
+        forks = get_forks(api)
+        tag_origin_master(forks, args.tag)
+    else:
+        print("For now tag is only supported for opencog->singnet")
 elif args.action == "docker":
     publish_dockers(args.tag)
