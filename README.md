@@ -59,6 +59,11 @@ script can be started again. It continues merging from next repo. After
 doing merge script pushes branches into user's github repo forks, starts CI on
 the set of branches and stops.
 
+By default all singnet forks are considered, in order to use only some
+of them one can use the `--forks` options and provide a comma
+separated list of repository names, such as `--forks cogutil,atomspace`.
+The `--forks` option can be used across all actions, not just `merge`.
+
 User should check CI status manually and execute:
 ```sh
 python merge-opencog-to-singnet.py \
