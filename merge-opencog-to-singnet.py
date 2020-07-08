@@ -338,7 +338,7 @@ if args.action == "merge":
     fetch_repos(forks, args.singnet_to_opencog)
     merge_opencog_to_singnet(forks, args.singnet_to_opencog)
     push_results(forks, args.singnet_to_opencog)
-    run_ci(forks, mrg_bch, singnet_to_opencog=args.singnet_to_opencog)
+    run_ci(forks, mrg_bch, sn_to_oc=args.singnet_to_opencog)
 elif args.action == "release":
     tag = args.tag
     if tag is None:
@@ -357,7 +357,7 @@ elif args.action == "fetch":
 elif args.action == "ci":
     forks = get_forks(api)
     run_ci(forks, args.ci_branch, user=args.ci_fork,
-           singnet_to_opencog=args.singnet_to_opencog)
+           sn_to_oc=args.singnet_to_opencog)
 elif args.action == "pr":
     forks = get_forks(api)
     raise_prs(api, user, forks, args.singnet_to_opencog)
