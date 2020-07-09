@@ -303,7 +303,7 @@ args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
 
-repo_names = args.forks.split(',')
+repo_names = args.forks.split(',') if args.forks else None
 
 user = api.get_user()
 print("current git user:", user["login"])
