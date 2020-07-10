@@ -69,9 +69,12 @@ def run(cmd, stdout=subprocess.DEVNULL, **kargs):
     return subprocess.run(cmd, stderr=subprocess.STDOUT,
                           stdout=stdout, **kargs)
 
-def get_forks(api):
+def get_forks(api, repo_names=[]):
     print("looking for opencog forks")
     singnet_forks = api.get_repos("singnet", type="forks")
+    if repo_names:
+        singnet_forks = [repo for repo in
+                         singnet_forks if repo["name"] in repo_names]
     fork_and_parent = [(repo, api.get_url(repo["url"])["parent"]) for repo in
                    singnet_forks]
     opencog_forks = filter(lambda repo : repo[1]["owner"]["login"] == "opencog",
@@ -295,9 +298,12 @@ parser.add_argument("--action", type=str, required=False, default="merge",
 parser.add_argument("--ci-fork", type=str, required=False)
 parser.add_argument("--ci-branch", type=str, required=False, default=MERGE_BRANCH)
 parser.add_argument("--tag", type=str, required=False)
+parser.add_argument("--forks", type=str, required=False)
 args = parser.parse_args()
 
 api = GitHubApi(args.github_token)
+
+repo_names = args.forks.split(',') if args.forks else None
 
 user = api.get_user()
 print("current git user:", user["login"])
@@ -305,7 +311,7 @@ if args.ci_fork is None:
     args.ci_fork = user["login"]
 
 if args.action == "merge":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     clone_repos(api, forks)
     fetch_repos(forks)
     merge_opencog_to_singnet(forks)
@@ -318,24 +324,24 @@ elif args.action == "release":
     print("releasing {} tag".format(tag))
     print("last chance to exit, waiting for 10 seconds...")
     time.sleep(10)
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     tag_origin_master(forks, tag)
     publish_dockers(tag)
 elif args.action == "fetch":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     clone_repos(api, forks)
     fetch_repos(forks)
 elif args.action == "ci":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     run_ci(forks, args.ci_branch, user=args.ci_fork)
 elif args.action == "pr":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     raise_prs(api, user, forks)
 elif args.action == "clean":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     remove_old_merge_branches(forks)
 elif args.action == "tag":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     tag_origin_master(forks, args.tag)
 elif args.action == "docker":
     publish_dockers(args.tag)
