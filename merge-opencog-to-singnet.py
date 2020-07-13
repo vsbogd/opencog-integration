@@ -59,10 +59,13 @@ class GitHubApi:
         return Request(url, headers=headers, method=method)
 
 def branch_exists(folder, branch):
-    process = subprocess.run(["git", "rev-parse", "--verify", branch],
-                              stderr=subprocess.STDOUT,
-                              stdout=subprocess.DEVNULL, cwd=folder)
-    return process.returncode == 0
+    try:
+        process = subprocess.run(["git", "rev-parse", "--verify", branch],
+                                 stderr=subprocess.STDOUT,
+                                 stdout=subprocess.DEVNULL, cwd=folder)
+        return process.returncode == 0
+    except FileNotFoundError:
+        return False;
 
 def run(cmd, stdout=subprocess.DEVNULL, **kargs):
     return subprocess.run(cmd, stderr=subprocess.STDOUT,
