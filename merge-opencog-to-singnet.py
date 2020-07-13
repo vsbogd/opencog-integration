@@ -369,7 +369,7 @@ elif args.action == "pr":
     forks = get_forks(api, repo_names)
     raise_prs(api, user, forks, args.singnet_to_opencog)
 elif args.action == "clean":
-    forks = get_forks(api)
+    forks = get_forks(api, repo_names)
     remove_old_merge_branches(forks, args.singnet_to_opencog)
 elif args.action == "tag":
     forks = get_forks(api, repo_names)
