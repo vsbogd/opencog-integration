@@ -1,6 +1,16 @@
 params = [:]
 params.ROOT_COMPONENT = "atomspace";
 
+void parallel(Map<String, Closure> stages) {
+	stages.eachWithIndex{ key, value, index ->
+		value.call();
+	}
+}
+
+steps_copy = [:]
+steps_copy.parallel = { x -> parallel x };
+steps_copy.build = { x -> build x };
+
 println ("define components");
 
 Code ocpkg = code("ocpkg").repo(params.OCPKG_REPO).branch(params.OCPKG_BRANCH);
@@ -33,35 +43,40 @@ deps = dependencies(ocpkg, atomspace_sql, opencog_deps, postgres,
 
 println ("get the list of stages and execute them");
 
-for (String stage : deps.stagesFor(params.ROOT_COMPONENT)) {
-    println ("stage: " + stage);
-    //parallel stage
-}
+Component root  = deps.componentByName(params.ROOT_COMPONENT);
+Set<Component> ready = deps.untouched(Collections.singleton(root));
+parallel deps.stagesFor(ready);
 
 class Dependencies {
 
-	private final Component[] components;
+	private final def steps;
+	private final Set<Component> components;
 
-	public Dependencies(Component... components) {
-		this.components = components;
+	public Dependencies(def steps, Component... components) {
+		this.steps = steps;
+		this.components = new HashSet<>(Arrays.asList(components));
 	}
 
 	// FIXME: what is correct type to return from this method?
-	public List<String> stagesFor(String rootName) {
-		List<String> stages = [];
-
-		Component root  = componentByName(rootName);
-		Set<Component> built = new HashSet<>(root.getRequirements());
-
-		while (immediateStageFor(root, new HashSet<Component>(built), { stage, components ->
-			stages.add(stage);
-			built.addAll(components);
-		}));
-
-		return stages;
+	public def stagesFor(Set<Component> ready) {
+		Set<Component> comps = nextComponents(ready);
+		def branches = [:]
+		for (Component comp : comps) {
+		    branches[comp.getName()] = {
+    			if (!ready.contains(comp)) {
+        			println ("build: " + comp.getName());
+        			//build job: comp.getName()
+        			ready.add(comp);
+        			// FIXME: groovy tries to call parallel as a property of
+        			// Dependencies
+        			steps.parallel.call(stagesFor(ready));
+    			}
+		    }
+		}
+		return branches;
 	}
 
-	private Component componentByName(String name) {
+	public Component componentByName(String name) {
 		for (Component comp : components) {
 			if (comp.getName().equals(name)) {
 				return comp;
@@ -70,42 +85,55 @@ class Dependencies {
 		throw new IllegalArgumentException("Could not find component name: " + name);
 	}
 
-	private boolean immediateStageFor(Component root, Set<Component> built, Closure<Boolean> callback) {
-		String stage = null;
+	private Set<Component> nextComponents(Set<Component> ready) {
 		Set<Component> stageComponents = new HashSet<>();
 
 		for (Component comp : components) {
-			if (built.contains(comp)) {
+			if (ready.contains(comp)) {
 				continue;
 			}
-			// FIXME: how to apply root and noroot cases correctly
-			if (comp.getRequirements().isEmpty() && root != null) {
-				continue;
-			}
-			if (!built.containsAll(comp.getRequirements())) {
+			if (!ready.containsAll(comp.getRequirements())) {
 				continue;
 			}
 
 			stageComponents.add(comp);
+		}
 
-			if (stage == null) {
-				stage = "";
+		return stageComponents;
+	}
+
+	public Set<Component> untouched(Set<Component> changed) {
+		Set<Component> untouched = new HashSet<>(components);		
+		untouched.removeAll(touched(changed));
+		return untouched;
+	}
+
+	private Set<Component> touched(Set<Component> changed) {
+		Set<Component> touched = new HashSet<>();
+		for (Component comp : components) {
+			if (isTouched(comp, changed)) {
+				touched.add(comp);
 			}
-			stage += comp.getName() + ", ";
 		}
+		return touched;
+	}
 
-		if (stage == null) {
-			return false;
+	private boolean isTouched(Component comp, Set<Component> changed) {
+		if (changed.contains(comp)) {
+			return true;
 		}
-
-		callback.call(stage, stageComponents);
-		return true;
+		for (Component req : comp.getRequirements()) {
+			if (isTouched(req, changed)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }
 
 Dependencies dependencies(Component... components) {
-	return new Dependencies(components);
+	return new Dependencies(steps_copy, components);
 }
 
 interface Component {
@@ -164,14 +192,14 @@ Code code(String name) {
 abstract class Job<T> extends Repo<T> implements Component {
 
 	protected String name;
-	protected Set<Component> reqs = new HashSet<>();
+	protected Set<Component> requirements = new HashSet<>();
 
 	public Job(String name) {
 		this.name = name;
 	}
 
-	public T requires(Component... reqs) {
-		this.reqs.addAll(Arrays.asList(reqs));
+	public T requires(Component... requirements) {
+		this.requirements.addAll(Arrays.asList(requirements));
 		return (T)this;
 	}
 
@@ -182,7 +210,7 @@ abstract class Job<T> extends Repo<T> implements Component {
 
 	@Override
 	public Set<Component> getRequirements() {
-		return reqs;
+		return requirements;
 	}
 
 	@Override
