@@ -55,6 +55,8 @@ for (Component comp : components) {
 			for (LatchRef latch : reqLatches) {
 				awaitLatch(latch);
 			}
+			//println("starting build: " + inProgress.getName());	
+			//build job: inProgress.getName()
 			println("build finished: " + inProgress.getName());	
 		}
 	}
@@ -133,14 +135,15 @@ abstract class Repo<T> {
 
 }
 
-class Code extends Repo<Code> implements Component {
+class Code extends Repo<Code> implements Component, Serializable {
 
 	private final String name;
-	private final LatchRef latch;
+	private final def steps
+	private LatchRef latch;
 
-	public Code(String name, LatchRef latch) {
+	public Code(def steps, String name) {
 		this.name = name;
-		this.latch = latch;
+		this.steps = steps;
 	}
 
 	@Override
@@ -155,23 +158,27 @@ class Code extends Repo<Code> implements Component {
 
 	@Override
 	public LatchRef getLatch() {
+		if (latch == null) {
+			latch = steps.createLatch();
+		}
 		return latch;
 	}
 }
 
 Code code(String name) {
-	return new Code(name, createLatch());
+	return new Code(this, name);
 }
 
-abstract class Job<T> extends Repo<T> implements Component {
+abstract class Job<T> extends Repo<T> implements Component, Serializable {
 
 	protected final String name;
 	protected Set<Component> requirements = new HashSet<>();
-	protected final LatchRef latch;
+	protected final def steps;
+	protected LatchRef latch;
 
-	public Job(String name, LatchRef latch) {
+	public Job(def steps, String name) {
 		this.name = name;
-		this.latch = latch;
+		this.steps = steps;
 	}
 
 	public T requires(Component... requirements) {
@@ -196,26 +203,29 @@ abstract class Job<T> extends Repo<T> implements Component {
 
 	@Override
 	public LatchRef getLatch() {
+		if (latch == null) {
+			latch = steps.createLatch();
+		}
 		return latch;
 	}
 }
 
 class Docker extends Job<Docker> {
-	public Docker(String name, LatchRef latch) {
-		super(name, latch);
+	public Docker(def steps, String name) {
+		super(steps, name);
 	}
 }
 
 Docker docker(String name) {
-	return new Docker(name, createLatch());
+	return new Docker(this, name);
 }
 
 class Deb extends Job<Deb> {
-	public Deb(String name, LatchRef latch) {
-		super(name, latch);
+	public Deb(def steps, String name) {
+		super(steps, name);
 	}
 }
 
 Deb deb(String name) {
-	return new Deb(name, createLatch());
+	return new Deb(this, name);
 }
