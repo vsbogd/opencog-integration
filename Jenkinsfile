@@ -1,17 +1,6 @@
-params = [:]
-params.ROOT_COMPONENT = "atomspace";
+import com.github.topikachu.jenkins.concurrent.latch.LatchRef;
 
-void parallel(Map<String, Closure> stages) {
-	stages.eachWithIndex{ key, value, index ->
-		value.call();
-	}
-}
-
-steps_copy = [:]
-steps_copy.parallel = { x -> parallel x };
-steps_copy.build = { x -> build x };
-
-println ("define components");
+println("define components");
 
 Code ocpkg = code("ocpkg").repo(params.OCPKG_REPO).branch(params.OCPKG_BRANCH);
 Code atomspace_sql = code("atomspace_sql").repo(params.ATOMSPACE_REPO).branch(params.ATOMSPACE_BRANCH);
@@ -36,110 +25,89 @@ Deb pln = deb("pln").repo(params.PLN_REPO).branch(params.PLN_BRANCH)
 Deb opencog = deb("opencog").repo(params.OPENCOG_REPO).branch(params.OPENCOG_BRANCH)
 .requires(opencog_deps, cogutil, atomspace, cogserver, attention, ure, pln);
 
-println ("save dependencies");
+println("save dependencies");
 
-deps = dependencies(ocpkg, atomspace_sql, opencog_deps, postgres,
-    	cogutil, atomspace, cogserver, attention, ure, pln, opencog);
+Set<Component> components = new HashSet<>([ocpkg, atomspace_sql, opencog_deps, postgres,
+    	cogutil, atomspace, cogserver, attention, ure, pln, opencog]);
 
-println ("get the list of stages and execute them");
+println("form the execution plan");
 
-Component root  = deps.componentByName(params.ROOT_COMPONENT);
-Set<Component> ready = deps.untouched(Collections.singleton(root));
-parallel deps.stagesFor(ready);
+Component root  = componentByName(components, params.ROOT_COMPONENT);
+Set<Component> built = untouched(components, Collections.singleton(root));
+Map<String, Closure<?>> plan = [:];
+for (Component comp : components) {
 
-class Dependencies {
-
-	private final def steps;
-	private final Set<Component> components;
-
-	public Dependencies(def steps, Component... components) {
-		this.steps = steps;
-		this.components = new HashSet<>(Arrays.asList(components));
+	if (built.contains(comp)) {
+		continue;
 	}
 
-	// FIXME: what is correct type to return from this method?
-	public def stagesFor(Set<Component> ready) {
-		Set<Component> comps = nextComponents(ready);
-		def branches = [:]
-		for (Component comp : comps) {
-		    branches[comp.getName()] = {
-    			if (!ready.contains(comp)) {
-        			println ("build: " + comp.getName());
-        			//build job: comp.getName()
-        			ready.add(comp);
-        			// FIXME: groovy tries to call parallel as a property of
-        			// Dependencies
-        			steps.parallel.call(stagesFor(ready));
-    			}
-		    }
+	List<LatchRef> reqLatches = [];
+	for (Component req : comp.getRequirements()) {
+		if (built.contains(req)) {
+			continue;
 		}
-		return branches;
+		reqLatches.add(req.getLatch());
 	}
 
-	public Component componentByName(String name) {
-		for (Component comp : components) {
-			if (comp.getName().equals(name)) {
-				return comp;
+	Component inProgress = comp;
+	plan[inProgress.getName()] = {
+		countDownLatch(inProgress.getLatch()) {
+			for (LatchRef latch : reqLatches) {
+				awaitLatch(latch);
 			}
+			println("build finished: " + inProgress.getName());	
 		}
-		throw new IllegalArgumentException("Could not find component name: " + name);
 	}
-
-	private Set<Component> nextComponents(Set<Component> ready) {
-		Set<Component> stageComponents = new HashSet<>();
-
-		for (Component comp : components) {
-			if (ready.contains(comp)) {
-				continue;
-			}
-			if (!ready.containsAll(comp.getRequirements())) {
-				continue;
-			}
-
-			stageComponents.add(comp);
-		}
-
-		return stageComponents;
-	}
-
-	public Set<Component> untouched(Set<Component> changed) {
-		Set<Component> untouched = new HashSet<>(components);		
-		untouched.removeAll(touched(changed));
-		return untouched;
-	}
-
-	private Set<Component> touched(Set<Component> changed) {
-		Set<Component> touched = new HashSet<>();
-		for (Component comp : components) {
-			if (isTouched(comp, changed)) {
-				touched.add(comp);
-			}
-		}
-		return touched;
-	}
-
-	private boolean isTouched(Component comp, Set<Component> changed) {
-		if (changed.contains(comp)) {
-			return true;
-		}
-		for (Component req : comp.getRequirements()) {
-			if (isTouched(req, changed)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 }
 
-Dependencies dependencies(Component... components) {
-	return new Dependencies(steps_copy, components);
+println("execute plan");
+
+parallel(plan);
+
+// Library functions and classes
+
+Component componentByName(Set<Component> components, String name) {
+	for (Component comp : components) {
+		if (comp.getName().equals(name)) {
+			return comp;
+		}
+	}
+	throw new IllegalArgumentException("Could not find component name: " + name);
+}
+
+Set<Component> untouched(Set<Component> components, Set<Component> changed) {
+	Set<Component> untouched = new HashSet<>(components);		
+	untouched.removeAll(touched(components, changed));
+	return untouched;
+}
+
+Set<Component> touched(Set<Component> components, Set<Component> changed) {
+	Set<Component> touched = new HashSet<>();
+	for (Component comp : components) {
+		if (isTouched(comp, changed)) {
+			touched.add(comp);
+		}
+	}
+	return touched;
+}
+
+boolean isTouched(Component comp, Set<Component> changed) {
+	if (changed.contains(comp)) {
+		return true;
+	}
+	for (Component req : comp.getRequirements()) {
+		if (isTouched(req, changed)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 interface Component {
 
 	String getName();
 	Set<Component> getRequirements();
+	LatchRef getLatch();
 
 }
 
@@ -168,9 +136,11 @@ abstract class Repo<T> {
 class Code extends Repo<Code> implements Component {
 
 	private final String name;
+	private final LatchRef latch;
 
-	public Code(String name) {
+	public Code(String name, LatchRef latch) {
 		this.name = name;
+		this.latch = latch;
 	}
 
 	@Override
@@ -183,19 +153,25 @@ class Code extends Repo<Code> implements Component {
 		return Collections.emptySet();
 	}
 
+	@Override
+	public LatchRef getLatch() {
+		return latch;
+	}
 }
 
 Code code(String name) {
-	return new Code(name);
+	return new Code(name, createLatch());
 }
 
 abstract class Job<T> extends Repo<T> implements Component {
 
-	protected String name;
+	protected final String name;
 	protected Set<Component> requirements = new HashSet<>();
+	protected final LatchRef latch;
 
-	public Job(String name) {
+	public Job(String name, LatchRef latch) {
 		this.name = name;
+		this.latch = latch;
 	}
 
 	public T requires(Component... requirements) {
@@ -218,24 +194,28 @@ abstract class Job<T> extends Repo<T> implements Component {
 		return "Job(name: " + name + ")";
 	}
 
+	@Override
+	public LatchRef getLatch() {
+		return latch;
+	}
 }
 
 class Docker extends Job<Docker> {
-	public Docker(String name) {
-		super(name);
+	public Docker(String name, LatchRef latch) {
+		super(name, latch);
 	}
 }
 
 Docker docker(String name) {
-	return new Docker(name);
+	return new Docker(name, createLatch());
 }
 
 class Deb extends Job<Deb> {
-	public Deb(String name) {
-		super(name);
+	public Deb(String name, LatchRef latch) {
+		super(name, latch);
 	}
 }
 
 Deb deb(String name) {
-	return new Deb(name);
+	return new Deb(name, createLatch());
 }
