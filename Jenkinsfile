@@ -36,30 +36,10 @@ Component root  = componentByName(components, params.ROOT_COMPONENT);
 Set<Component> built = untouched(components, Collections.singleton(root));
 Map<String, Closure<?>> plan = [:];
 for (Component comp : components) {
-
 	if (built.contains(comp)) {
 		continue;
 	}
-
-	List<LatchRef> reqLatches = [];
-	for (Component req : comp.getRequirements()) {
-		if (built.contains(req)) {
-			continue;
-		}
-		reqLatches.add(req.getLatch());
-	}
-
-	Component inProgress = comp;
-	plan[inProgress.getName()] = {
-		countDownLatch(inProgress.getLatch()) {
-			for (LatchRef latch : reqLatches) {
-				awaitLatch(latch);
-			}
-			//println("starting build: " + inProgress.getName());	
-			//build job: inProgress.getName()
-			println("build finished: " + inProgress.getName());	
-		}
-	}
+	plan[comp.getName()] = comp.getStage(built);
 }
 
 println("execute plan");
@@ -110,6 +90,7 @@ interface Component {
 	String getName();
 	Set<Component> getRequirements();
 	LatchRef getLatch();
+	Closure<?> getStage(Set<Component> built);
 
 }
 
@@ -163,6 +144,15 @@ class Code extends Repo<Code> implements Component, Serializable {
 		}
 		return latch;
 	}
+
+	@Override
+	public Closure<?> getStage(Set<Component> built) {
+		return {
+			steps.countDownLatch(getLatch()) {
+				steps.println("nothing to build: " + getName());	
+			}
+		};
+	}
 }
 
 Code code(String name) {
@@ -207,6 +197,29 @@ abstract class Job<T> extends Repo<T> implements Component, Serializable {
 			latch = steps.createLatch();
 		}
 		return latch;
+	}
+
+	@Override
+	public Closure<?> getStage(Set<Component> built) {
+		List<LatchRef> latchesToAwait = [];
+
+		for (Component req : requirements) {
+			if (built.contains(req)) {
+				continue;
+			}
+			latchesToAwait.add(req.getLatch());
+		}
+
+		return {
+			steps.countDownLatch(getLatch()) {
+				for (LatchRef latch : latchesToAwait) {
+					steps.awaitLatch(latch);
+				}
+				//println("starting build: " + getName());	
+				//build job: getName()
+				steps.println("build finished: " + getName());	
+			}
+		};
 	}
 }
 
