@@ -42,7 +42,7 @@ jobs:
                         sed 's~\.git$~/'${OCPKG_BRANCH}'/ocpkg~'`
                     echo OCPKG_URL=$OCPKG_URL
                     OCPKG_URL=$OCPKG_URL sh ./docker-build.sh -u -b
-                    docker tag singularitynet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
+                    docker tag singnet/opencog-deps:latest vsbogdcircleci/singularitynet:opencog-deps
             - run:
                 name: Build relex image
                 no_output_timeout: 60m
@@ -51,7 +51,7 @@ jobs:
                     echo RELEX_REPO=$RELEX_REPO
                     echo RELEX_BRANCH=$RELEX_BRANCH
                     sh ./docker-build.sh -u -r
-                    docker tag singularitynet/relex:latest vsbogdcircleci/singularitynet:relex
+                    docker tag singnet/relex:latest vsbogdcircleci/singularitynet:relex
             - run:
                 name: Build postgres image
                 command: |
@@ -61,7 +61,7 @@ jobs:
                         sed 's~\.git$~/'${ATOMSPACE_BRANCH}'/opencog/persist/sql/multi-driver/atom.sql~'`
                     echo ATOM_SQL_URL=$ATOM_SQL_URL
                     ATOM_SQL_URL=$ATOM_SQL_URL sh ./docker-build.sh -u -p
-                    docker tag singularitynet/postgres:latest vsbogdcircleci/singularitynet:postgres
+                    docker tag singnet/postgres:latest vsbogdcircleci/singularitynet:postgres
             - run:
                 name: Push images
                 command: |
@@ -189,6 +189,7 @@ jobs:
                     make -C /ws/pln/build install
                     make -C /ws/cogserver/build install
                     make -C /ws/attention/build install
+                    make -C /ws/spacetime/build install
                     git clone --depth 1 -b $OPENCOG_BRANCH $OPENCOG_REPO .
                     mkdir -p build
                     cd build
@@ -265,6 +266,7 @@ jobs:
                 command: |
                     make -C /ws/cogutil/build install
                     make -C /ws/atomspace/build install
+                    make -C /ws/ure/build install
                     git clone --depth 1 -b $ASMOSES_BRANCH $ASMOSES_REPO .
                     mkdir -p build
                     cd build
@@ -573,6 +575,10 @@ jobs:
                     make
                     make tests
                     make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - spacetime
 
 workflows:
     version: 2
@@ -625,6 +631,7 @@ workflows:
                     - build-attention
                     - build-ure
                     - build-pln
+                    - build-spacetime
             - build-moses:
                 context: dockerhub
                 requires:
@@ -634,6 +641,7 @@ workflows:
                 requires:
                     - build-cogutil
                     - build-atomspace
+                    - build-ure
             - build-miner:
                 context: dockerhub
                 requires:
