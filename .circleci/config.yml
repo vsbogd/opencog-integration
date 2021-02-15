@@ -189,6 +189,7 @@ jobs:
                     make -C /ws/pln/build install
                     make -C /ws/cogserver/build install
                     make -C /ws/attention/build install
+                    make -C /ws/spacetime/build install
                     git clone --depth 1 -b $OPENCOG_BRANCH $OPENCOG_REPO .
                     mkdir -p build
                     cd build
@@ -574,6 +575,10 @@ jobs:
                     make
                     make tests
                     make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - spacetime
 
 workflows:
     version: 2
@@ -626,6 +631,7 @@ workflows:
                     - build-attention
                     - build-ure
                     - build-pln
+                    - build-spacetime
             - build-moses:
                 context: dockerhub
                 requires:
