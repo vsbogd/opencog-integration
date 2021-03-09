@@ -375,6 +375,7 @@ jobs:
                     make -C /ws/atomspace/build install
                     make -C /ws/cogserver/build install
                     make -C /ws/opencog/build install
+                    make -C /ws/atomspace-rocks/build install
                     git clone --depth 1 -b $LEARN_BRANCH $LEARN_REPO .
                     mkdir -p build
                     cd build
@@ -580,6 +581,39 @@ jobs:
                 paths:
                     - spacetime
 
+    build-atomspace-rocks:
+        docker:
+            - image: vsbogdcircleci/singularitynet:opencog-deps
+              user: root
+              auth:
+                  username: $DOCKER_USERNAME
+                  password: $DOCKER_PASSWORD
+        working_directory: /ws/atomspace-rocks
+        steps:
+            - attach_workspace:
+                at: /ws
+            - run:
+                name: Echo arguments
+                command: |
+                    echo ATOMSPACE_ROCKS_BRANCH=$ATOMSPACE_ROCKS_BRANCH
+                    echo ATOMSPACE_ROCKS_REPO=$ATOMSPACE_ROCKS_REPO
+            - run:
+                name: Build atomspace-rocks
+                command: |
+                    make -C /ws/cogutil/build install
+                    make -C /ws/atomspace/build install
+                    git clone --depth 1 -b $ATOMSPACE_ROCKS_BRANCH $ATOMSPACE_ROCKS_REPO .
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make
+                    make tests
+                    make test
+            - persist_to_workspace:
+                root: /ws
+                paths:
+                    - atomspace-rocks
+
 workflows:
     version: 2
     complete_build:
@@ -655,6 +689,7 @@ workflows:
                     - build-atomspace
                     - build-cogserver
                     - build-opencog
+                    - build-atomspace-rocks
             - build-visualization:
                 context: dockerhub
                 requires:
@@ -667,6 +702,11 @@ workflows:
                     - build-cogutil
                     - build-atomspace
             - build-spacetime:
+                context: dockerhub
+                requires:
+                    - build-cogutil
+                    - build-atomspace
+            - build-atomspace-rocks:
                 context: dockerhub
                 requires:
                     - build-cogutil
